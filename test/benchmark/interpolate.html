@@ -6,7 +6,7 @@
     <title>clay - 性能基准测试 - 插值计算</title>
     <link rel="shortcut icon" href="../../clay.png" type="image/x-png">
     <script src="../libs/JSLitmus.js"></script>
-    <script src="../../build/clay-1.4.0.min.js"></script>
+    <script src="../../build/clay-core.min.js"></script>
 </head>
 
 <body>
@@ -24,6 +24,13 @@
             var cardinal = clay.cardinal().setP([[0, 2], [1, 10], [2, 5], [3, 4]]), flag;
             for (flag = 0; flag <= 3; flag += 0.01) {
                 cardinal(flag);
+            }
+        });
+
+        JSLitmus.test('catmull-rom插值法', function () {
+            var catmullRom = clay.catmullRom().setP([50, 400], [100, 100], [200, 200], [300, 60]), flag;
+            for (flag = 0; flag <= 1; flag += 0.0033) {
+                catmullRom(flag);
             }
         });
 

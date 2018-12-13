@@ -14,8 +14,10 @@ var source = [
     /**
      * 兼容性
      */
-    './src/_polyfill/_browser.js',
-    './src/_polyfill/innerHTML.js',
+    './src/polyfill/browser.js',
+    './src/polyfill/normal.js',
+    './src/polyfill/innerHTML.js',
+    './src/polyfill/event.js',
 
     /**
      * 工具类
@@ -44,6 +46,7 @@ var source = [
      */
     './src/calculate/interpolate/Hermite.js',
     './src/calculate/interpolate/Cardinal.js',
+    './src/calculate/interpolate/catmull-rom.js',
     './src/calculate/map.js',
     './src/calculate/transform.js',
 
@@ -67,13 +70,13 @@ var source = [
     /**
      * 扩展
      */
-    './src/_extend/_compiler.js',
-    './src/_extend/component.js'
+    './src/extend/compiler.js',
+    './src/extend/component.js',
+    './src/extend/config.js'
 
 ];
 
 var banner = '/*!\n' +
-    '* 文件状态：<%= pkg.status %>\n*\n' +
     '* <%= pkg.name %> - <%= pkg.description %>\n' +
     '* <%= pkg.repository.url %>\n' +
     '* \n' +
@@ -100,20 +103,20 @@ module.exports = function (grunt) {
             },
             target: {
                 src: source,
-                dest: 'build/clay.js'
+                dest: 'build/.temp'
             }
         },
         build: {//自定义插入合并
             target: {
                 banner: banner,
-                src: 'build/clay.js',
+                src: 'build/.temp',
                 info: ['<%= pkg.version %>', '<%= pkg.author %>', '<%= pkg.email %>'],
-                dest: ['build/clay-<%= pkg.version %>.js']
+                dest: ['build/<%= pkg.name %>.js']
             }
         },
         clean: {// 删除临时文件
             target: {
-                src: ['build/clay.js']
+                src: ['build/.temp']
             }
         },
         jshint: { //语法检查
@@ -139,12 +142,15 @@ module.exports = function (grunt) {
                     "XMLHttpRequest": true,
                     "SVGSVGElement": true,
                     "ActiveXObject": true,
-                    "clay": true
+                    "<%= pkg.name %>": true,
+                    "Event": true,
+                    "define": true,
+                    "exports": true
                 },
                 "force": true, // 强制执行，即使出现错误也会执行下面的任务
                 "reporterOutput": 'jshint.debug.txt' //将jshint校验的结果输出到文件
             },
-            target: 'build/clay-<%= pkg.version %>.js'
+            target: 'build/<%= pkg.name %>.js'
         },
         uglify: { //压缩代码
             options: {
@@ -155,7 +161,7 @@ module.exports = function (grunt) {
                     mangle: true
                 },
                 files: [{
-                    'build/clay-<%= pkg.version %>.min.js': ['build/clay-<%= pkg.version %>.js']
+                    'build/<%= pkg.name %>.min.js': ['build/<%= pkg.name %>.js']
                 }]
             }
         },
@@ -197,7 +203,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-contrib-connect');
 
-    // clay特殊的任务
+    // <%= pkg.name %>特殊的任务
     grunt.loadTasks("build/tasks");
 
     /*注册任务*/
