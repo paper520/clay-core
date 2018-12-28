@@ -1,17 +1,17 @@
 /*!
-* clay-core - Provide more flexible data visualization solutions!
+* clay.js - Provide more flexible data visualization solutions!
 * git+https://github.com/yelloxing/clay-core.git
 * 
 * author 心叶
 *
-* version 1.5.2next
+* version 1.6.0next
 * 
 * build Sun Jul 29 2018
 *
 * Copyright yelloxing
 * Released under the MIT license
 * 
-* Date:Fri Dec 14 2018 16:44:03 GMT+0800 (GMT+08:00)
+* Date:Fri Dec 28 2018 20:59:18 GMT+0800 (中国标准时间)
 */
 (function (global, factory) {
 
@@ -82,9 +82,13 @@ function _sizzle(selector, context) {
 
     var temp = [], flag;
     if (typeof selector === 'string') {
-        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
+
         // 去掉回车，空格和换行
         selector = (selector + "").trim().replace(/[\n\f\r]/g, '');
+
+        if (/^</.test(selector)) return [_toNode(selector)];
+
+        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
 
         // 支持的选择器包括：
         // #id .class [attr='value'] tagName
@@ -166,20 +170,18 @@ function _sizzle(selector, context) {
             return temp;
         }
 
-        // 其它情况一律认为希望把字符串变成结点
+        // 非法的选择器
         else {
-            try {
-                return [_toNode(selector)];
-            } catch (e) {
-                return [];
-            }
+            throw new Error("Unsupported selector!");
         }
 
     }
+
     // 如果是结点
     else if (selector && (selector.nodeType === 1 || selector.nodeType === 11 || selector.nodeType === 9)) {
         return [selector];
     }
+
     // 如果是结点集合
     else if (selector && (selector.constructor === Array || selector.constructor === HTMLCollection || selector.constructor === NodeList)) {
         for (flag = 0; flag < selector.length; flag++) {
@@ -189,11 +191,20 @@ function _sizzle(selector, context) {
         }
         return temp;
     }
+
     // 如果是clay对象
     else if (selector && selector.constructor === clay) {
         return selector;
-    } else {
+    }
+
+    // 如果没传递，表示想获取空对象
+    else if (!selector) {
         return [];
+    }
+
+    // 其它未知情况
+    else {
+        throw new Error("Unsupported parameter!");
     }
 
 }
@@ -718,15 +729,66 @@ _clock.stop = function () {
     }
 };
 
-// 把颜色统一转变成rgba(x,x,x,x)格式
-// 返回数字数组[r,g,b,a]
-clay.color = function (color) {
-    var temp = clay('head').css('color', color).css('color').replace(/^rgba?\(([^)]+)\)$/, '$1').split(new RegExp('\\,' + _regexp.whitespace));
-    return [+temp[0], +temp[1], +temp[2], temp[3] == undefined ? 1 : +temp[3]];
-};
-
-// 获取一组色彩
-clay.getColors = function (num) {
+var _rgb2hsl = function (R, G, B) {
+    var R1 = +R / 255,
+        G1 = +G / 255,
+        B1 = +B / 255;
+    var MAX = Math.max(R1, G1, B1);
+    var MIN = Math.min(R1, G1, B1);
+    var H, S, L;
+    if (MAX === MIN) {
+        H = 0;
+    } else if (MAX === R1) {
+        H = 60 * (G1 - B1) / (MAX - MIN);
+    } else if (MAX === G1) {
+        H = 60 * (B1 - R1) / (MAX - MIN) + 120;
+    } else if (MAX === B1) {
+        H = 60 * (R1 - G1) / (MAX - MIN) + 240;
+    }
+    if (H < 0) {
+        H += 360;
+    }
+    L = (MAX + MIN) / 2;
+    if (L === 0 || MAX === MIN) {
+        S = 0;
+    } else if (L > 0 && L <= 0.5) {
+        S = (MAX - MIN) / (MAX + MIN);
+    } else if (L > 0.5) {
+        S = (MAX - MIN) / (2 - MAX - MIN);
+    }
+    return [+H.toFixed(2), +S.toFixed(2), +L.toFixed(2)];
+}, _hsl2rgb = function (h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2;
+    var r, g, b;
+    if (h >= 0 && h < 60) {
+        r = (c + m) * 255;
+        g = (x + m) * 255;
+        b = m * 255;
+    } else if (h >= 60 && h < 120) {
+        r = (x + m) * 255;
+        g = (c + m) * 255;
+        b = m * 255;
+    } else if (h >= 120 && h < 180) {
+        r = m * 255;
+        g = (c + m) * 255;
+        b = (x + m) * 255;
+    } else if (h >= 180 && h < 240) {
+        r = m * 255;
+        g = (x + m) * 255;
+        b = (c + m) * 255;
+    } else if (h >= 240 && h < 300) {
+        r = (x + m) * 255;
+        g = m * 255;
+        b = (c + m) * 255;
+    } else if (h >= 300 && h < 360) {
+        r = (c + m) * 255;
+        g = m * 255;
+        b = (x + m) * 255;
+    }
+    return [+r.toFixed(0), +g.toFixed(0), +b.toFixed(0)];
+}, _randomColors = function (num) {
     if (typeof num == 'number' && num > 3) {
         var temp = [], flag = 0;
         for (flag = 1; flag <= num; flag++)
@@ -737,9 +799,40 @@ clay.getColors = function (num) {
     }
 };
 
+// 把颜色统一转变成rgba(x,x,x,x)格式
+// 返回数字数组[r,g,b,a]
+clay.color = function (color) {
+    var temp = clay('head').css('color', color).css('color').replace(/^rgba?\(([^)]+)\)$/, '$1').split(new RegExp('\\,' + _regexp.whitespace));
+    return [+temp[0], +temp[1], +temp[2], temp[3] == undefined ? 1 : +temp[3]];
+};
+
+// 获取一组色彩
+clay.getColors = function (num, range, rgb) {
+    if (!range) return _randomColors(num);
+
+    //num：需要的颜色个数
+    //range:数组，取值0-360，色彩范围
+    //rgb: 可选，数组，参考颜色，是一组rgb
+    var temp = (range[1] - range[0]) / num;
+    var s, l;
+    if (rgb) {
+        var hsl = _rgb2hsl(rgb[0], rgb[1], rgb[2]);
+        s = hsl[1]; l = hsl[2];
+    } else {
+        s = 0.78; l = 0.4;
+    }
+    var array = [];
+    for (var i = 0; i < num; i++) {
+        rgb = _hsl2rgb(temp * i + range[0], s, l);
+        array.push("rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")");
+    }
+    return array;
+};
+
 // 给一组数据，轮询执行一遍
 clay.loop = function (datas, callback) {
-    var flag = 0, data;
+    var flag = 0,
+        data;
     for (data in datas)
         callback(datas[data], data, flag++);
     return clay;
@@ -1030,6 +1123,205 @@ clay.prototype.layer = function () {
 
 };
 
+// 二个4x4矩阵相乘
+// 或矩阵和齐次坐标相乘
+var _multiply = function (matrix4, param) {
+    var newParam = [], i, j;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < param.length / 4; j++)
+            newParam[j * 4 + i] =
+                matrix4[i] * param[j * 4] +
+                matrix4[i + 4] * param[j * 4 + 1] +
+                matrix4[i + 8] * param[j * 4 + 2] +
+                matrix4[i + 12] * param[j * 4 + 3];
+    return newParam;
+};
+
+// 求一个矩阵的行列式（方阵）
+// 4x4 或 3x3
+var _determinant = function (matrixX) {
+
+    // 3x3
+    if (matrixX.length == 9) {
+        return matrixX[0] * matrixX[4] * matrixX[8] -
+            matrixX[0] * matrixX[7] * matrixX[5] -
+            matrixX[3] * matrixX[1] * matrixX[8] +
+            matrixX[3] * matrixX[7] * matrixX[2] +
+            matrixX[6] * matrixX[1] * matrixX[5] -
+            matrixX[6] * matrixX[4] * matrixX[2];
+    }
+
+    // 4x4
+    else if (matrixX.length == 16) {
+        return matrixX[0] * _determinant([
+            matrixX[5], matrixX[6], matrixX[7],
+            matrixX[9], matrixX[10], matrixX[11],
+            matrixX[13], matrixX[14], matrixX[15]
+        ]) -
+            matrixX[4] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[9], matrixX[10], matrixX[11],
+                matrixX[13], matrixX[14], matrixX[15]
+            ]) +
+            matrixX[8] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[5], matrixX[6], matrixX[7],
+                matrixX[13], matrixX[14], matrixX[15]
+            ]) -
+            matrixX[12] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[5], matrixX[6], matrixX[7],
+                matrixX[9], matrixX[10], matrixX[11]
+            ]);
+    }
+
+    // 其它情况
+    else {
+        throw new Error('Unsupported parameter!');
+    }
+
+};
+
+// 求一个4x4矩阵的全部代数余子式Aij
+var _algebraic_cofactor = function (matrix4) {
+    return [
+
+        // 0
+        _determinant([
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[9], matrix4[10], matrix4[11],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 1
+        -_determinant([
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[8], matrix4[10], matrix4[11],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 2
+        _determinant([
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[8], matrix4[8], matrix4[11],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 3
+        -_determinant([
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[8], matrix4[9], matrix4[10],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 4
+        -_determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[9], matrix4[10], matrix4[11],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 5
+        _determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[8], matrix4[10], matrix4[11],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 6
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[8], matrix4[9], matrix4[11],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 7
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[8], matrix4[9], matrix4[10],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 8
+        _determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 9
+        -_determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 10
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 11
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 12
+        -_determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[9], matrix4[10], matrix4[11]
+        ]),
+
+        // 13
+        _determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[8], matrix4[10], matrix4[11]
+        ]),
+
+        // 14
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[8], matrix4[9], matrix4[11]
+        ]),
+
+        // 15
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[8], matrix4[9], matrix4[10]
+        ])
+    ];
+};
+
+// 求一个4x4矩阵的伴随矩阵A*
+var _adjoint_matrix = function (matrix4) {
+    var algebraic_cofactor = _algebraic_cofactor(matrix4);
+    return [
+        algebraic_cofactor[0], algebraic_cofactor[4], algebraic_cofactor[8], algebraic_cofactor[12],
+        algebraic_cofactor[1], algebraic_cofactor[5], algebraic_cofactor[9], algebraic_cofactor[13],
+        algebraic_cofactor[2], algebraic_cofactor[6], algebraic_cofactor[10], algebraic_cofactor[14],
+        algebraic_cofactor[3], algebraic_cofactor[7], algebraic_cofactor[11], algebraic_cofactor[15]
+    ];
+};
+
+// 求一个4x4矩阵的逆矩阵A'
+var _inverse_matrix = function (matrix4) {
+    var adjoint = _adjoint_matrix(matrix4),
+        determinant = _determinant(matrix4),
+        flag, newMatrix4 = [];
+    if (determinant == 0) throw new Error('This matrix is irreversible!');
+    for (flag = 0; flag < 16; flag++)
+        newMatrix4[flag] = adjoint[flag] / determinant;
+    return newMatrix4;
+};
+
 // 在(a,b,c)方向位移d
 var _move = function (d, a, b, c) {
     c = c || 0;
@@ -1122,24 +1414,6 @@ var _transform = function (a1, b1, c1, a2, b2, c2) {
     }
 };
 
-// 二个4x4矩阵相乘
-// 或矩阵和齐次坐标相乘
-var _multiply = function (matrix4, param) {
-    var newParam = [], i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < param.length / 4; j++)
-            newParam[j * 4 + i] =
-                matrix4[i] * param[j * 4] +
-                matrix4[i + 4] * param[j * 4 + 1] +
-                matrix4[i + 8] * param[j * 4 + 2] +
-                matrix4[i + 12] * param[j * 4 + 3];
-    return newParam;
-};
-
-/**
- * 4x4矩阵
- * 列主序存储
- */
 clay.Matrix4 = function (initMatrix4) {
 
     var matrix4 = initMatrix4 || [
@@ -1150,25 +1424,39 @@ clay.Matrix4 = function (initMatrix4) {
     ];
 
     var matrix4Obj = {
+
+        // 移动
         "move": function (dis, a, b, c) {
             matrix4 = _multiply(_move(dis, a, b, c), matrix4);
             return matrix4Obj;
         },
+
+        // 旋转
         "rotate": function (deg, a1, b1, c1, a2, b2, c2) {
             var matrix4s = _transform(a1, b1, c1, a2, b2, c2);
             matrix4 = _multiply(_multiply(_multiply(matrix4s[1], _rotate(deg)), matrix4s[0]), matrix4);
             return matrix4Obj;
         },
+
+        // 缩放
         "scale": function (xTimes, yTimes, zTimes, cx, cy, cz) {
             matrix4 = _multiply(_scale(xTimes, yTimes, zTimes, cx, cy, cz), matrix4);
             return matrix4Obj;
         },
+
         // 乘法
         // 可以传入一个矩阵(matrix4,flag)
         "multiply": function (newMatrix4, flag) {
             matrix4 = flag ? _multiply(matrix4, newMatrix4) : _multiply(newMatrix4, matrix4);
             return matrix4Obj;
         },
+
+        // 逆矩阵
+        "inverse": function () {
+            matrix4 = _inverse_matrix(matrix4);
+            return matrix4Obj;
+        },
+
         // 对一个坐标应用变换
         // 齐次坐标(x,y,z,w)
         "use": function (x, y, z, w) {
@@ -1180,9 +1468,12 @@ clay.Matrix4 = function (initMatrix4) {
             temp[2] = temp[2].toFixed(7);
             return temp;
         },
+
+        // 矩阵的值
         "value": function () {
             return matrix4;
         }
+
     };
 
     return matrix4Obj;
@@ -1664,17 +1955,19 @@ var _rect = function (painter) {
         // 记录矩形的四个角坐标
         var position, s2 = scope.s * 0.5;
 
+        var flag = scope.t[0];
+
         // 分类前准备
         if (scope.t[0] == "RL" || scope.t[0] == "BT") {
             length = -length;
-            scope.t[0] = {
+            flag = {
                 "RL": "LR",
                 "BT": "TB"
             }[scope.t[0]];
         }
 
         // 分类计算
-        switch (scope.t[0]) {
+        switch (flag) {
             case "LR":
                 position = [
                     [x, y - s2],
@@ -1846,7 +2139,7 @@ var _text = function (painter) {
      * @param {string|number} text 绘制的文字
      */
     var text = function (x, y, text, deg) {
-        deg = !deg ? 0 : (deg * 180 / Math.PI);
+        deg = !deg ? 0 : deg;
         return painter(x, y, text, deg, scope.p[0], scope.p[1], scope.c || "#000", scope.s || 16);
     };
 
@@ -1889,7 +2182,7 @@ clay.svg.text = function () {
                 }
             }
 
-            var rotate = !deg ? "" : "transform='rotate(" + deg + "," + x + "," + y + ")'";
+            var rotate = !deg ? "" : "transform='rotate(" + (deg * 180 / Math.PI) + "," + x + "," + y + ")'";
             return clay('<text fill=' + color + ' x="' + x + '" y="' + y + '" ' + rotate + '>' + text + '</text>').css({
                 // 文本水平
                 "text-anchor": {
@@ -2149,6 +2442,354 @@ clay.canvas.polygon = function (selector, config) {
     return obj;
 
 };
+
+// 把着色器字符串加载成着色器对象
+var _loadShader = function (gl, type, source) {
+    // 创建着色器对象
+    var shader = gl.createShader(type);
+    if (shader == null) throw new Error('Unable to create shader!');
+    // 绑定资源
+    gl.shaderSource(shader, source);
+    // 编译着色器
+    gl.compileShader(shader);
+    // 检测着色器编译是否成功
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        throw new Error('Failed to compile shader:' + gl.getShaderInfoLog(shader));
+    return shader;
+};
+
+// 初始化着色器
+var _useShader = function (gl, vshaderSource, fshaderSource) {
+    // 分别加载顶点着色器对象和片段着色器对象
+    var vertexShader = _loadShader(gl, gl.VERTEX_SHADER, vshaderSource),
+        fragmentShader = _loadShader(gl, gl.FRAGMENT_SHADER, fshaderSource);
+    // 创建一个着色器程序
+    var glProgram = gl.createProgram();
+    // 把前面创建的二个着色器对象添加到着色器程序中
+    gl.attachShader(glProgram, vertexShader);
+    gl.attachShader(glProgram, fragmentShader);
+    // 把着色器程序链接成一个完整的程序
+    gl.linkProgram(glProgram);
+    // 检测着色器程序链接是否成功
+    if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS))
+        throw new Error('Failed to link program: ' + gl.getProgramInfoLog(glProgram));
+    // 使用这个完整的程序
+    gl.useProgram(glProgram);
+    return glProgram;
+};
+
+// 获取一个新的缓冲区
+// isElement默认false，创建第一种缓冲区，为true创建第二种
+var _newBuffer = function (gl, isElement) {
+    var buffer = gl.createBuffer(),
+        TYPE = isElement ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+    // 把缓冲区对象绑定到目标
+    gl.bindBuffer(TYPE, buffer);
+    return buffer;
+};
+
+// 数据写入缓冲区
+// data是一个类型化数组，表示写入的数据
+// usage表示程序如何使用存储在缓冲区的数据
+var _writeBuffer = function (gl, data, usage, isElement) {
+    var TYPE = isElement ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+    gl.bufferData(TYPE, data, usage);
+};
+
+// 使用缓冲区数据
+// location指定待分配的attribute变量的存储位置
+// size每个分量个数
+// type数据类型，应该是以下的某个：
+//      gl.UNSIGNED_BYTE    Uint8Array
+//      gl.SHORT            Int16Array
+//      gl.UNSIGNED_SHORT   Uint16Array
+//      gl.INT              Int32Array
+//      gl.UNSIGNED_INT     Uint32Array
+//      gl.FLOAT            Float32Array
+// stride相邻二个数据项的字节数
+// offset数据的起点字节位置
+// normalized是否把非浮点型的数据归一化到[0,1]或[-1,1]区间
+var _useBuffer = function (gl, location, size, type, stride, offset, normalized) {
+    // 把缓冲区对象分配给目标变量
+    gl.vertexAttribPointer(location, size, type, normalized || false, stride || 0, offset || 0);
+    // 连接目标对象和缓冲区对象
+    gl.enableVertexAttribArray(location);
+};
+
+// 删除缓冲区
+var _deleteBuffer = function (gl, buffer) {
+    gl.deleteBuffer(buffer);
+};
+
+// 初始化一个纹理对象
+// type有两个选择gl.TEXTURE_2D代表二维纹理，gl.TEXTURE_CUBE_MAP 立方体纹理
+var _initTexture = function (gl, unit, type) {
+    // 创建纹理对象
+    var texture = gl.createTexture();
+    // 开启纹理单元，unit表示开启的编号
+    gl.activeTexture(gl['TEXTURE' + unit]);
+    // 绑定纹理对象到目标上
+    gl.bindTexture(type, texture);
+    return texture;
+};
+
+// 配置纹理
+var _configTexture = function (gl, type, config) {
+    var key;
+    for (key in config) {
+        /**
+         *
+         * 可配置项有四个：
+         *  1. gl.TEXTURE_MAX_FILTER：放大方法
+         *  2. gl.TEXTURE_MIN_FILTER：缩小方法
+         *  3. gl.TEXTURE_WRAP_S：水平填充方法
+         *  4. gl.TEXTURE_WRAP_T：垂直填充方法
+         *
+         */
+        gl.texParameteri(type, gl[key], gl[config[key]]);
+    }
+};
+
+// 链接资源图片
+// level默认传入0即可，和金字塔纹理有关
+// format表示图像的内部格式：
+//      gl.RGB(红绿蓝)
+//      gl.RGBA(红绿蓝透明度)
+//      gl.ALPHA(0.0,0.0,0.0,透明度)
+//      gl.LUMINANCE(L、L、L、1L:流明)
+//      gl.LUMINANCE_ALPHA(L、L、L,透明度)
+// textureType表示纹理数据的格式：
+//      gl.UNSIGNED_BYTE: 表示无符号整形，每一个颜色分量占据1字节
+//      gl.UNSIGNED_SHORT_5_6_5: 表示RGB，每一个分量分别占据占据5, 6, 5比特
+//      gl.UNSIGNED_SHORT_4_4_4_4: 表示RGBA，每一个分量分别占据占据4, 4, 4, 4比特
+//      gl.UNSIGNED_SHORT_5_5_5_1: 表示RGBA，每一个分量分别占据占据5比特，A分量占据1比特
+var _linkImage = function (gl, type, level, format, textureType, image) {
+    gl.texImage2D(type, level, format, format, textureType, image);
+};
+
+// 删除纹理
+var _deleteTexture = function (gl, texture) {
+    gl.deleteTexture(texture);
+};
+
+// 获取webgl上下文
+function _getCanvasWebgl(node, opts) {
+    var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"],
+        context = null, i;
+    for (i = 0; i < names.length; i++) {
+        try {
+            context = node.getContext(names[i], opts);
+        } catch (e) { }
+        if (context) break;
+    }
+    return context;
+}
+
+// 启动webgl绘图
+clay.prototype.webgl = function (opts) {
+    var gl = _getCanvasWebgl(this[0], opts),
+        glObj = {
+            "painter": function () {
+                return gl;
+            },
+
+            // 启用着色器
+            "shader": function (vshaderSource, fshaderSource) {
+                gl.program = _useShader(gl, vshaderSource, fshaderSource);
+                return glObj;
+            },
+
+            // 缓冲区
+            "buffer": function (isElement) {
+                // 创建缓冲区
+                var buffer = _newBuffer(gl, isElement),
+                    bufferData,
+                    bufferObj = {
+                        // 写入数据
+                        "write": function (data, usage) {
+                            usage = usage || gl.STATIC_DRAW;
+                            _writeBuffer(gl, data, usage, isElement);
+                            bufferData = data;
+                            return bufferObj;
+                        },
+                        // 分配使用
+                        "use": function (location, size, stride, offset, type, normalized) {
+                            var fsize = bufferData.BYTES_PER_ELEMENT;
+                            if (typeof location == 'string') location = gl.getAttribLocation(gl.program, location);
+                            stride = stride || 0;
+                            offset = offset || 0;
+                            type = type || gl.FLOAT;
+                            _useBuffer(gl, location, size, type, stride * fsize, offset * fsize, normalized);
+                            return bufferObj;
+                        },
+                        // 关闭退出
+                        "close": function () {
+                            _deleteBuffer(gl, buffer);
+                            return glObj;
+                        }
+                    };
+                return bufferObj;
+            },
+
+            // 纹理
+            "texture": function (unit, type) {
+                type = type || gl.TEXTURE_2D;
+                // 创建纹理
+                var texture = _initTexture(gl, unit, type);
+                var textureObj = {
+                    // 配置纹理对象
+                    "config": function (config) {
+                        _configTexture(gl, type, config);
+                        return textureObj;
+                    },
+                    // 链接图片资源
+                    "use": function (level, format, textureType, image) {
+                        _linkImage(gl, type, level, format, textureType, image);
+                        return textureObj;
+                    },
+                    // 关闭纹理
+                    "close": function () {
+                        _deleteTexture(gl, texture);
+                        return glObj;
+                    }
+                };
+                return textureObj;
+            }
+
+        };
+
+    return glObj;
+};
+
+//计算获得单位向量
+var _getUnitVector = function (x, y, z) {
+    var d = Math.sqrt(x * x + y * y + z * z);
+    return [x / d, y / d, z / d];
+},
+    //计算获得v1,v2两个向量的叉积
+    _getXMultiplyResult = function (v1, v2) {
+        return [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+        ];
+    };
+
+// 视图
+var _lookAt = function (
+    // 视点
+    eX, eY, eZ,
+    // 观察目标中心点
+    cX, cY, cZ,
+    // 上方向
+    upX, upY, upZ
+) {
+    eX = eX || 0, eY = eY || 0, eZ = eZ === 0 ? 0 : 1;
+    cX = cX || 0, cY = cY || 0, cZ = cZ || 0;
+    upX = upX || 0, upY = upY === 0 ? 0 : 1, upZ = upZ || 0;
+
+    if (upX === 0 && upY === 0 && upZ === 0) throw new Error("The orientation above the camera cannot be a zero vector!");
+    if (eX === cX && eY === cY && eZ === cZ) throw new Error("Viewpoint cannot coincide with target point!");
+    if (((cX - eX) * upX + (cY - eY) * upY + (cZ - eZ) * upZ) !== 0) throw new Error("The shooting direction of the camera must be perpendicular to the upper direction!");
+
+    //获得相机拍摄方向的单位向量
+    var visualVector = _getUnitVector(cX - eX, cY - eY, cZ - eZ);
+    //获得上方向的单位向量
+    var upVector = _getUnitVector(upX, upY, upZ);
+    //根据visualVector和upVector叉积，求得右手螺旋定则的另一轴单位向量（x轴）
+    //visualVector X upVector
+    var xRailVector = _getXMultiplyResult(visualVector, upVector);
+    //计算该坐标系下原点位置
+    var O = [eX + visualVector[0], eY + visualVector[1], eZ + visualVector[2]];
+    /**
+     * 由此可以根据物体原坐标[OriginX,OriginY,OriginZ],计算出物体新坐标 [x,y,z] ：
+     * 
+     *      i               j               k         z轴与相机拍摄方向相反，故取负号
+     * 
+     * xRailVector[0]   upVector[0]   -visualVector[0]       x     OriginX     O[0]
+     * xRailVector[1]   upVector[1]   -visualVector[1]   X   y  =  OriginY  -  O[1]
+     * xRailVector[2]   upVector[2]   -visualVector[2]       z     OriginZ     O[2]
+     * 
+     * 简写形式： AX=Ox-B
+     * 则         X=(A^-1)(Ox-B)
+     * 
+     */
+    return clay.Matrix4([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -O[0], -O[1], -O[2], 1
+    ]).multiply(
+        clay.Matrix4([
+            xRailVector[0], xRailVector[1], xRailVector[2], 0,
+            upVector[0], upVector[1], upVector[2], 0,
+            -visualVector[0], -visualVector[1], -visualVector[2], 0,
+            0, 0, 0, 1
+        ]).inverse().value()
+    ).value();
+};
+
+// 投影
+// 这里采用右手坐标系
+// https://www.codeguru.com/cpp/misc/misc/graphics/article.php/c10123/Deriving-Projection-Matrices.htm
+// -1<=x<=1
+// -1<=y<=1
+// -1<=z<=1
+
+// 一点透视
+// 物体限制在四棱锥中
+var _perspective_projection = function (
+    // 裁剪面边界
+    left, right, top, bottom,
+    // 近裁剪面和远裁剪面
+    near, far
+) {
+    // 特别注意：求出的新坐标为（x'z,y'z,z'z,z）
+    return [
+        2 * near / (right - left), 0, 0, 0,
+        0, 2 * near / (top - bottom), 0, 0,
+        (left + right) / (left - right),
+        (bottom + top) / (bottom - top),
+        (far + near) / (near - far),
+        1,
+        0, 0, far * far * 2 / (near - far), 0
+    ];
+};
+
+// 正交投影
+// 投影向量和观察平面垂直
+// 物体坐标沿观察坐标系的z轴平行投影到观察平面上
+// 观察点和观察平面间的距离不会影响物体的投影大小
+// 取景范围是一个长方体
+// 只有在这个长方体中的景物才会被绘制出来
+var _orthogonal_projection = function (
+    // 裁剪面边界
+    left, right, top, bottom,
+    // 近裁剪面和远裁剪面
+    near, far
+) {
+    return [
+        2 / (right - left), 0, 0, 0,
+        0, 2 / (top - bottom), 0, 0,
+        0, 0, 2 / (near - far), 0,
+        (right + left) / (left - right),
+        (top + bottom) / (bottom - top),
+        (far + near) / (far - near),
+        1
+    ];
+};
+
+
+// 灯光
+
+// diffuse reflection
+// <漫反射光颜色>=<入射光颜色>*<表面基底色>*cosB
+// 入射光线和法线的夹角称为入射角，用B表示
+
+// ambient reflection
+// <环境反射光颜色>=<入射光颜色>*<表面基底色>
+
+// <表面的反射光颜色>=<漫反射光颜色>+<环境反射光颜色>
 
 clay.treeLayout = function () {
 
@@ -2582,7 +3223,7 @@ clay.config = function ($provider, content) {
     return clay;
 };
 
-    clay.version = '1.5.2next';
+    clay.version = '1.6.0next';
     clay.author = '心叶';
     clay.email = 'yelloxing@gmail.com';
 

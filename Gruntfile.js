@@ -35,6 +35,7 @@ var source = [
     /**
      * 变换矩阵4x4
      */
+    './src/Matrix4/basic.calc.js',
     './src/Matrix4/move.js',
     './src/Matrix4/rotate.js',
     './src/Matrix4/scale.js',
@@ -62,6 +63,22 @@ var source = [
     './src/graphics/polygon.js',
 
     /**
+     * webgl
+     */
+    './src/webgl/shader.js',
+    './src/webgl/buffer.js',
+    './src/webgl/texture.js',
+    './src/webgl/index.js',
+
+    /**
+     * 三维世界
+     */
+    './src/three/lookAt.js',
+    './src/three/projection.js',
+    './src/three/camera.js',
+    './src/three/light.js',
+
+    /**
      * 布局
      */
     './src/layout/tree.js',
@@ -77,7 +94,7 @@ var source = [
 ];
 
 var banner = '/*!\n' +
-    '* <%= pkg.name %> - <%= pkg.description %>\n' +
+    '* clay.js - <%= pkg.description %>\n' +
     '* <%= pkg.repository.url %>\n' +
     '* \n' +
     '* author <%= pkg.author %>\n' +
@@ -142,7 +159,6 @@ module.exports = function (grunt) {
                     "XMLHttpRequest": true,
                     "SVGSVGElement": true,
                     "ActiveXObject": true,
-                    "<%= pkg.name %>": true,
                     "Event": true,
                     "define": true,
                     "exports": true
@@ -203,7 +219,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-contrib-connect');
 
-    // <%= pkg.name %>特殊的任务
+    //特殊的任务
     grunt.loadTasks("build/tasks");
 
     /*注册任务*/

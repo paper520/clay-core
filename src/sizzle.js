@@ -9,9 +9,13 @@ function _sizzle(selector, context) {
 
     var temp = [], flag;
     if (typeof selector === 'string') {
-        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
+
         // 去掉回车，空格和换行
         selector = (selector + "").trim().replace(/[\n\f\r]/g, '');
+
+        if (/^</.test(selector)) return [_toNode(selector)];
+
+        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
 
         // 支持的选择器包括：
         // #id .class [attr='value'] tagName
@@ -93,20 +97,18 @@ function _sizzle(selector, context) {
             return temp;
         }
 
-        // 其它情况一律认为希望把字符串变成结点
+        // 非法的选择器
         else {
-            try {
-                return [_toNode(selector)];
-            } catch (e) {
-                return [];
-            }
+            throw new Error("Unsupported selector!");
         }
 
     }
+
     // 如果是结点
     else if (selector && (selector.nodeType === 1 || selector.nodeType === 11 || selector.nodeType === 9)) {
         return [selector];
     }
+
     // 如果是结点集合
     else if (selector && (selector.constructor === Array || selector.constructor === HTMLCollection || selector.constructor === NodeList)) {
         for (flag = 0; flag < selector.length; flag++) {
@@ -116,11 +118,20 @@ function _sizzle(selector, context) {
         }
         return temp;
     }
+
     // 如果是clay对象
     else if (selector && selector.constructor === clay) {
         return selector;
-    } else {
+    }
+
+    // 如果没传递，表示想获取空对象
+    else if (!selector) {
         return [];
+    }
+
+    // 其它未知情况
+    else {
+        throw new Error("Unsupported parameter!");
     }
 
 }
