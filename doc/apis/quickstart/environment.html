@@ -22,7 +22,7 @@
         关注的问题
     </h2>
     <p>
-        首先，本库是为了Web端数据可视化而建立的，如果用更通俗的话说，就是为了方便使用HTML + CSS + ES绘制各种2D和3D图形来反映统计的数据，并且绘制的图形是可交互的。
+        首先，本库是为了Web端数据可视化而建立的，如果用更通俗的话说，就是为了方便使用HTML + CSS + ES绘制各种图形，并且绘制的图形是可交互的。
     </p>
     <img width=400 src="../../images/china-map.png" alt="中国地图">
     <p>
@@ -37,11 +37,25 @@
     <p>
         如果你开发的是一个web项目，直接在页面引入打包后的文件后即可：
     </p>
-    <pre class='prettyprint lang-html'>&lt;script src="./build/clay.min.js" type="text/javascript"&gt;&lt;/script&gt;</pre>
+    <pre class='prettyprint lang-html'>&lt;script src="./build/clay-core.min.js" type="text/javascript"&gt;&lt;/script&gt;</pre>
     <p>
-        如果你想在node.js环境下使用，需要使用下面的方法引入：
+        如果你想通过npm方式管理，首先你需要通过命令行安装clay.js：
     </p>
-    <pre class='prettyprint lang-js'>const clay=require('./build/clay.min.js');</pre>
+    <pre class='prettyprint lang-js'>npm install --save clay-core</pre>
+    <p>
+        安装好了，可以这样调用：
+    </p>
+    <pre class='prettyprint lang-js'>import render from 'clay-core';
+
+// 启动clay
+let clay=render(window);
+
+// 基本配置(可以不配置，使用默认值)
+clay.config(...);
+...
+
+// 导出，供别的模块使用
+export default clay;</pre>
     <h2>
         注意点
     </h2>
@@ -56,7 +70,7 @@
     </h2>
     <p>
         无论何时，在使用clay.js绘制图形的时候，如果遇到任何疑惑或问题，请先在
-        <a target="_blank" href="https://github.com/yelloxing/clay/issues">Github issue</a>
+        <a target="_blank" href="https://github.com/yelloxing/clay-core/issues">Github issue</a>
         上查找是否存在相同问题，如果依旧无法解决，可以根据问题的类别进行提问，除非特殊情况，你会在24小时内获得回复。
     </p>
     <p>

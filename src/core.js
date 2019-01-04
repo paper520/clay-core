@@ -3,9 +3,11 @@
     'use strict';
 
     if (typeof module === "object" && typeof module.exports === "object") {
-        module.exports = factory(global);
+        module.exports = function (target) {
+            return factory(target || window);
+        };
     } else {
-        factory(global);
+        global.clay = global.$$ = factory(global);
     }
 
 })(typeof window !== "undefined" ? window : this, function (global, undefined) {
@@ -31,9 +33,7 @@
 
     clay.prototype.init.prototype = clay.prototype;
 
-    // @CODE build.js inserts compiled clay here
-
-    global.clay = global.$$ = clay;
+    // @CODE build.js inserts compiled clay.js here
 
     return clay;
 
