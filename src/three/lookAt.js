@@ -21,13 +21,15 @@ var _lookAt = function (
     // 上方向
     upX, upY, upZ
 ) {
-    eX = eX || 0, eY = eY || 0, eZ = eZ === 0 ? 0 : 1;
-    cX = cX || 0, cY = cY || 0, cZ = cZ || 0;
-    upX = upX || 0, upY = upY === 0 ? 0 : 1, upZ = upZ || 0;
+    eX = eX || 0; eY = eY || 0; eZ = eZ === 0 ? 0 : 1;
+    cX = cX || 0; cY = cY || 0; cZ = cZ || 0;
+    upX = upX || 0; upY = upY === 0 ? 0 : 1; upZ = upZ || 0;
 
-    if (upX === 0 && upY === 0 && upZ === 0) throw new Error("The orientation above the camera cannot be a zero vector!");
-    if (eX === cX && eY === cY && eZ === cZ) throw new Error("Viewpoint cannot coincide with target point!");
-    if (((cX - eX) * upX + (cY - eY) * upY + (cZ - eZ) * upZ) !== 0) throw new Error("The shooting direction of the camera must be perpendicular to the upper direction!");
+    if (upX === 0 && upY === 0 && upZ === 0)
+        throw new Error("The orientation above the camera cannot be a zero vector!");
+
+    if (eX === cX && eY === cY && eZ === cZ)
+        throw new Error("Viewpoint cannot coincide with target point!");
 
     //获得相机拍摄方向的单位向量
     var visualVector = _getUnitVector(cX - eX, cY - eY, cZ - eZ);
@@ -40,28 +42,26 @@ var _lookAt = function (
     var O = [eX + visualVector[0], eY + visualVector[1], eZ + visualVector[2]];
     /**
      * 由此可以根据物体原坐标[OriginX,OriginY,OriginZ],计算出物体新坐标 [x,y,z] ：
-     * 
+     *
      *      i               j               k         z轴与相机拍摄方向相反，故取负号
-     * 
+     *
      * xRailVector[0]   upVector[0]   -visualVector[0]       x     OriginX     O[0]
      * xRailVector[1]   upVector[1]   -visualVector[1]   X   y  =  OriginY  -  O[1]
      * xRailVector[2]   upVector[2]   -visualVector[2]       z     OriginZ     O[2]
-     * 
+     *
      * 简写形式： AX=Ox-B
      * 则         X=(A^-1)(Ox-B)
-     * 
+     *
      */
     return clay.Matrix4([
+        xRailVector[0], xRailVector[1], xRailVector[2], 0,
+        upVector[0], upVector[1], upVector[2], 0,
+        -visualVector[0], -visualVector[1], -visualVector[2], 0,
+        0, 0, 0, 1
+    ]).inverse().multiply([
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
         -O[0], -O[1], -O[2], 1
-    ]).multiply(
-        clay.Matrix4([
-            xRailVector[0], xRailVector[1], xRailVector[2], 0,
-            upVector[0], upVector[1], upVector[2], 0,
-            -visualVector[0], -visualVector[1], -visualVector[2], 0,
-            0, 0, 0, 1
-        ]).inverse().value()
-    ).value();
+    ], true).value();
 };

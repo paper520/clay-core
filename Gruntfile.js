@@ -14,7 +14,6 @@ var source = [
     /**
      * 兼容性
      */
-    './src/polyfill/browser.js',
     './src/polyfill/normal.js',
     './src/polyfill/innerHTML.js',
     './src/polyfill/event.js',
@@ -24,7 +23,6 @@ var source = [
      */
     './src/Tools/animation.js',
     './src/Tools/tool.js',
-    './src/Tools/ajax.js',
 
     /**
      * 高效独立对象
@@ -50,17 +48,6 @@ var source = [
     './src/calculate/interpolate/catmull-rom.js',
     './src/calculate/map.js',
     './src/calculate/transform.js',
-
-    /**
-     * 2D图形
-     */
-    './src/graphics/index.js',
-    './src/graphics/arc.js',
-    './src/graphics/rect.js',
-    './src/graphics/line.js',
-    './src/graphics/text.js',
-    './src/graphics/bezier.js',
-    './src/graphics/polygon.js',
 
     /**
      * webgl
