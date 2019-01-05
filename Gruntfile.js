@@ -14,17 +14,13 @@ var source = [
     /**
      * 兼容性
      */
-    './src/polyfill/browser.js',
-    './src/polyfill/normal.js',
     './src/polyfill/innerHTML.js',
-    './src/polyfill/event.js',
 
     /**
      * 工具类
      */
     './src/Tools/animation.js',
     './src/Tools/tool.js',
-    './src/Tools/ajax.js',
 
     /**
      * 高效独立对象
@@ -35,6 +31,7 @@ var source = [
     /**
      * 变换矩阵4x4
      */
+    './src/Matrix4/basic.calc.js',
     './src/Matrix4/move.js',
     './src/Matrix4/rotate.js',
     './src/Matrix4/scale.js',
@@ -51,33 +48,34 @@ var source = [
     './src/calculate/transform.js',
 
     /**
-     * 2D图形
+     * webgl
      */
-    './src/graphics/index.js',
-    './src/graphics/arc.js',
-    './src/graphics/rect.js',
-    './src/graphics/line.js',
-    './src/graphics/text.js',
-    './src/graphics/bezier.js',
-    './src/graphics/polygon.js',
+    './src/webgl/shader.js',
+    './src/webgl/buffer.js',
+    './src/webgl/texture.js',
+    './src/webgl/index.js',
+
+    /**
+     * 三维世界
+     */
+    './src/three/lookAt.js',
+    './src/three/projection.js',
+    './src/three/camera.js',
 
     /**
      * 布局
      */
     './src/layout/tree.js',
-    './src/layout/pie.js',
 
     /**
-     * 扩展
+     * 加强
      */
-    './src/extend/compiler.js',
-    './src/extend/component.js',
-    './src/extend/config.js'
+    './src/enhance/config.js'
 
 ];
 
 var banner = '/*!\n' +
-    '* <%= pkg.name %> - <%= pkg.description %>\n' +
+    '* clay.js - <%= pkg.description %>\n' +
     '* <%= pkg.repository.url %>\n' +
     '* \n' +
     '* author <%= pkg.author %>\n' +
@@ -142,7 +140,6 @@ module.exports = function (grunt) {
                     "XMLHttpRequest": true,
                     "SVGSVGElement": true,
                     "ActiveXObject": true,
-                    "<%= pkg.name %>": true,
                     "Event": true,
                     "define": true,
                     "exports": true
@@ -203,7 +200,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-contrib-connect');
 
-    // <%= pkg.name %>特殊的任务
+    //特殊的任务
     grunt.loadTasks("build/tasks");
 
     /*注册任务*/

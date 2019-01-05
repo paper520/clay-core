@@ -8,7 +8,8 @@
     <link rel="shortcut icon" href="../clay.png" type="image/x-png">
     <link rel="stylesheet" href="./libs/easycss-1.3.1.min.css">
     <link rel="stylesheet" href="frame.css">
-    <title>文档 - clay-core</title>
+    <script src="../build/clay-core.js"></script>
+    <title>文档 - clay.js</title>
     <script>
         function loadpage(url) {
             document.getElementsByTagName('iframe')[0].src = "./apis/" + url + ".html";
@@ -25,15 +26,13 @@
     <button onclick='toEdit()' id='edit-btn'>编辑文档</button>
     <div class="menu-frame" id='menu-frame'>
         <header>
-            <a href='https://yelloxing.github.io/clay-core/doc/' target="_blank">文档</a> / API
+            <a href='https://yelloxing.github.io/clay-core/doc/' target="_blank">clay.js</a> / API
         </header>
         <input type="text" placeholder="Type to filter" onkeyup='doSearch(this.value)'>
         <span>说明&amp;指南</span>
         <label>快速开始</label>
         <ul>
             <li onclick='loadpage("quickstart/environment")'>初始化环境</li>
-            <li onclick='loadpage("quickstart/example")'>简单例子</li>
-            <li onclick='loadpage("quickstart/broswer")'>浏览器支持</li>
             <li onclick='loadpage("quickstart/url")'>有用的链接</li>
         </ul>
         <label>教程</label>
@@ -42,7 +41,7 @@
             <li onclick='loadpage("course/layout")'>布局的使用</li>
             <li onclick='loadpage("course/layer_and_region")'>图层、区域管理者</li>
         </ul>
-        <span>基本接口</span>
+        <span>接口API</span>
         <label>结点对象</label>
         <ul>
             <li onclick='loadpage("clayobject/node")'>基本的结点操作</li>
@@ -55,7 +54,6 @@
             <li onclick='loadpage("tool/color")'>色彩相关</li>
             <li onclick='loadpage("tool/animation")'>轮询</li>
             <li onclick='loadpage("tool/layer_and_region")'>图层和区域管理者</li>
-            <li onclick='loadpage("tool/xhr")'>XHR 请求</li>
         </ul>
         <label>计算&amp;求值</label>
         <ul>
@@ -64,26 +62,24 @@
             <li onclick='loadpage("calculate/matrix4")'>Matrix4矩阵</li>
             <li onclick='loadpage("calculate/map")'>地球坐标映射</li>
         </ul>
-        <label>图形</label>
+        <label>WebGL</label>
         <ul>
-            <li onclick='loadpage("graphics/object")'>绘图对象</li>
-            <li onclick='loadpage("graphics/arc")'>圆弧 arc</li>
-            <li onclick='loadpage("graphics/bezier")'>贝塞尔曲线 bezier</li>
-            <li onclick='loadpage("graphics/line")'>曲线 line</li>
-            <li onclick='loadpage("graphics/text")'>文字 text</li>
-            <li onclick='loadpage("graphics/rect")'>矩形 rect</li>
-            <li onclick='loadpage("graphics/polygon")'>多边形 polygon</li>
+            <li onclick='loadpage("webgl/core")'>绘图对象</li>
+            <li onclick='loadpage("webgl/shader")'>着色器</li>
+            <li onclick='loadpage("webgl/buffer")'>缓冲区</li>
+            <li onclick='loadpage("webgl/texture")'>纹理</li>
         </ul>
         <label>布局</label>
         <ul>
             <li onclick='loadpage("layout/tree")'>tree 树布局</li>
-            <li onclick='loadpage("layout/pie")'>pie 饼布局</li>
         </ul>
-        <span>扩展接口</span>
+        <label>三维世界</label>
         <ul>
-            <li onclick='loadpage("extend/config")'>配置文件</li>
-            <li onclick='loadpage("extend/service")'>可注入服务和this</li>
-            <li onclick='loadpage("extend/component")'>自定义组件</li>
+            <li onclick='loadpage("3d/camera")'>照相机</li>
+        </ul>
+        <label>可加强部分</label>
+        <ul>
+            <li onclick='loadpage("enhance/config")'>配置项</li>
         </ul>
         <footer onclick='window.location.href="https://github.com/yelloxing/clay-core"'>
             Fork Me On Github
@@ -111,12 +107,12 @@
 
     window.console && window.console.log && (console.log([
         '%c ',
-        '我们的目标是：提供更友好的数据可视化（2D和3D）解决方案。',
+        '我们的目标是：提供更友好的web端绘图接口。',
         ' ',
         '始终秉承着开源的初衷，任何有益的建议或设计都是被鼓励作为新的代码贡献进来的。',
         ' '
     ].join('\n'), "color:#d66eac"),
-        console.log("%cclay-core项目github地址：https://github.com/yelloxing/clay-core （期待你的加入）", "color:#5292b2"));
+        console.log("%cclay.js项目github地址：https://github.com/yelloxing/clay-core （期待你的加入）", "color:#5292b2"));
 
 </script>
 

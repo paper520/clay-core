@@ -1,31 +1,29 @@
 /*!
-* clay-core - Provide more flexible data visualization solutions!
+* clay.js - Provide a more friendly web-side drawing interface!
 * git+https://github.com/yelloxing/clay-core.git
 * 
 * author 心叶
 *
-* version 1.5.2next
+* version 1.9.0next
 * 
 * build Sun Jul 29 2018
 *
 * Copyright yelloxing
 * Released under the MIT license
 * 
-* Date:Thu Dec 13 2018 14:27:37 GMT+0800 (GMT+08:00)
+* Date:Sat Jan 05 2019 01:48:44 GMT+0800 (GMT+08:00)
 */
 (function (global, factory) {
 
     'use strict';
 
     if (typeof module === "object" && typeof module.exports === "object") {
-        module.exports = function (target) {
-            return factory(target || window);
-        };
+        module.exports = factory();
     } else {
-        global.clay = global.$$ = factory(global);
+        global.clay = global.$$ = factory();
     }
 
-})(typeof window !== "undefined" ? window : this, function (global, undefined) {
+})(typeof window !== "undefined" ? window : this, function (undefined) {
 
     'use strict';
 
@@ -71,6 +69,7 @@ var _xlink = ["href", "title", "show", "type", "role", "actuate"];
 // 嵌入内部提供者
 var _provider = {};
 
+// 用于扩展或加强选择器
 var _out_sizzle;
 _provider.$sizzleProvider = function (config) {
     _out_sizzle = config;
@@ -81,9 +80,13 @@ function _sizzle(selector, context) {
 
     var temp = [], flag;
     if (typeof selector === 'string') {
-        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
+
         // 去掉回车，空格和换行
         selector = (selector + "").trim().replace(/[\n\f\r]/g, '');
+
+        if (/^</.test(selector)) return [_toNode(selector)];
+
+        if (typeof _out_sizzle === 'function') return _out_sizzle(selector, context);
 
         // 支持的选择器包括：
         // #id .class [attr='value'] tagName
@@ -165,20 +168,18 @@ function _sizzle(selector, context) {
             return temp;
         }
 
-        // 其它情况一律认为希望把字符串变成结点
+        // 非法的选择器
         else {
-            try {
-                return [_toNode(selector)];
-            } catch (e) {
-                return [];
-            }
+            throw new Error("Unsupported selector!");
         }
 
     }
+
     // 如果是结点
     else if (selector && (selector.nodeType === 1 || selector.nodeType === 11 || selector.nodeType === 9)) {
         return [selector];
     }
+
     // 如果是结点集合
     else if (selector && (selector.constructor === Array || selector.constructor === HTMLCollection || selector.constructor === NodeList)) {
         for (flag = 0; flag < selector.length; flag++) {
@@ -188,11 +189,20 @@ function _sizzle(selector, context) {
         }
         return temp;
     }
+
     // 如果是clay对象
     else if (selector && selector.constructor === clay) {
         return selector;
-    } else {
+    }
+
+    // 如果没传递，表示想获取空对象
+    else if (!selector) {
         return [];
+    }
+
+    // 其它未知情况
+    else {
+        throw new Error("Unsupported parameter!");
     }
 
 }
@@ -202,7 +212,7 @@ function _toNode(str) {
     var frame = document.createElementNS(_namespace.svg, 'svg');
     // 把传递元素类型和标记进行统一处理
     if (new RegExp("^" + _regexp.identifier + "$").test(str)) str = "<" + str + "></" + str + ">";
-    frame.innerHTML = str;
+    _innerSVG(frame,str);
     var childNodes = frame.childNodes, flag, child;
     for (flag = 0; flag < childNodes.length; flag++) {
         if (childNodes[flag].nodeType === 1 || childNodes[flag].nodeType === 9 || childNodes[flag].nodeType === 11) {
@@ -479,93 +489,9 @@ clay.prototype.position = function (event) {
 
 };
 
-// 判断浏览器类型
-var _browser = (function () {
-
-    var userAgent = global.navigator.userAgent;
-    if (userAgent.indexOf("Opera") > -1 || userAgent.indexOf("OPR") > -1) {
-        return "Opera";
-    }
-    if ((userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1) ||
-        (userAgent.indexOf("Trident") > -1 && userAgent.indexOf("rv:11.0") > -1)) {
-        return "IE";
-    }
-    if (userAgent.indexOf("Edge") > -1) {
-        return "Edge";
-    }
-    if (userAgent.indexOf("Firefox") > -1) {
-        return "Firefox";
-    }
-    if (userAgent.indexOf("Chrome") > -1) {
-        return "Chrome";
-    }
-    if (userAgent.indexOf("Safari") > -1) {
-        return "Safari";
-    }
-    return -1;
-
-})();
-
-// 判断IE浏览器版本
-var _IE = (function () {
-
-    // 如果不是IE浏览器直接返回
-    if (_browser != 'IE') return -1;
-
-    var userAgent = global.navigator.userAgent;
-    if (userAgent.indexOf("Trident") > -1 && userAgent.indexOf("rv:11.0") > -1) return 11;
-
-    if (/MSIE 10/.test(userAgent)) return 10;
-    if (/MSIE 9/.test(userAgent)) return 9;
-    if (/MSIE 8/.test(userAgent)) return 8;
-    if (/MSIE 7/.test(userAgent)) return 7;
-
-    // IE版本小于7
-    return 6;
-})();
-
-// 针对不支持的浏览器给出提示
-if (_IE < 9 && _browser == 'IE') throw new Error('IE browser version is too low, minimum support IE9!');
-
-// 获取函数名称
-// 部分旧浏览器不支持
-if ('name' in Function.prototype === false) {
-    // https://www.ecma-international.org/ecma-262/6.0/#sec-setfunctionname
-    Object.defineProperty(Function.prototype, 'name', {
-        get: function () {
-            return this.toString().match(/^\s*function\s*([^\(\s]*)/)[1];
-        }
-    });
-}
-
-// 表示二个正的浮点数之间的最新差值
-// 你可以由此判断二个浮点数是否相对
-// （因为js浮点运算都不是准确的，不可以简单的等号判断）
-// 老火狐和IE不支持
-if (Number.EPSILON === undefined) {
-    // https://www.ecma-international.org/ecma-262/6.0/#sec-number.epsilon
-    Number.EPSILON = Math.pow(2, - 52);
-}
-
-// 判断是不是整数
-// IE浏览器不支持
-if (Number.isInteger === undefined) {
-    Number.isInteger = function (value) {
-        // https://www.ecma-international.org/ecma-262/6.0/#sec-isfinite-number
-        return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
-    };
-}
-
-var _innerHTML = {
-    get: function () {
-        var frame = document.createElement("div"), i;
-        for (i = 0; i < this.childNodes.length; i++) {
-            // 深度克隆，克隆节点以及节点下面的子内容
-            frame.appendChild(this.childNodes[i].cloneNode(true));
-        }
-        return frame.innerHTML;
-    },
-    set: function (svgstring) {
+// 针对部分浏览器svg不支持innerHTML方法
+var _innerSVG = function (target, svgstring) {
+    if ('innerHTML' in SVGElement.prototype === false || 'innerHTML' in SVGSVGElement.prototype === false) {
         var frame = document.createElement("div"), i;
         frame.innerHTML = svgstring;
         var toSvgNode = function (htmlNode) {
@@ -590,47 +516,11 @@ var _innerHTML = {
                 node = node.nextSibling;
             }
         })(frame.firstChild, rslNode);
-        this.appendChild(rslNode);
+        target.appendChild(rslNode);
+    } else {
+        target.innerHTML = svgstring;
     }
 };
-
-// 针对部分浏览器svg上没有innerHTML进行加强
-if ('innerHTML' in SVGElement.prototype === false) {
-    Object.defineProperty(SVGElement.prototype, 'innerHTML', _innerHTML);
-}
-if ('innerHTML' in SVGSVGElement.prototype === false) {
-    Object.defineProperty(SVGSVGElement.prototype, 'innerHTML', _innerHTML);
-}
-
-// 兼容老IE浏览器
-// 请不要使用event.srcElement获取
-// https://dom.spec.whatwg.org/#dom-event-srcelement
-if ('target' in Event.prototype === false) {
-    Object.defineProperty(Event.prototype, 'target', {
-        get: function () {
-            return this.srcElement;
-        }
-    });
-}
-
-// 取消冒泡事件
-// 防止对事件流中当前节点的后续节点中的所有事件侦听器进行处理
-// 此方法不会影响当前节点中的任何事件侦听器
-// 如果需要取消包括本结点的方法，应该使用stopImmediatePropagation()
-// https://dom.spec.whatwg.org/#dom-event-stopimmediatepropagation
-if ('stopPropagation' in Event.prototype === false) {
-    Event.prototype.stopPropagation = function () {
-        this.cancelBubble = true;
-    };
-}
-
-// 阻止默认事件
-// https://dom.spec.whatwg.org/#dom-event-preventdefault
-if ('preventDefault' in Event.prototype === false) {
-    Event.prototype.preventDefault = function () {
-        this.returnValue = false;
-    };
-}
 
 var _clock = {
     //当前正在运动的动画的tick函数堆栈
@@ -717,15 +607,66 @@ _clock.stop = function () {
     }
 };
 
-// 把颜色统一转变成rgba(x,x,x,x)格式
-// 返回数字数组[r,g,b,a]
-clay.color = function (color) {
-    var temp = clay('head').css('color', color).css('color').replace(/^rgba?\(([^)]+)\)$/, '$1').split(new RegExp('\\,' + _regexp.whitespace));
-    return [+temp[0], +temp[1], +temp[2], temp[3] == undefined ? 1 : +temp[3]];
-};
-
-// 获取一组色彩
-clay.getColors = function (num) {
+var _rgb2hsl = function (R, G, B) {
+    var R1 = +R / 255,
+        G1 = +G / 255,
+        B1 = +B / 255;
+    var MAX = Math.max(R1, G1, B1);
+    var MIN = Math.min(R1, G1, B1);
+    var H, S, L;
+    if (MAX === MIN) {
+        H = 0;
+    } else if (MAX === R1) {
+        H = 60 * (G1 - B1) / (MAX - MIN);
+    } else if (MAX === G1) {
+        H = 60 * (B1 - R1) / (MAX - MIN) + 120;
+    } else if (MAX === B1) {
+        H = 60 * (R1 - G1) / (MAX - MIN) + 240;
+    }
+    if (H < 0) {
+        H += 360;
+    }
+    L = (MAX + MIN) / 2;
+    if (L === 0 || MAX === MIN) {
+        S = 0;
+    } else if (L > 0 && L <= 0.5) {
+        S = (MAX - MIN) / (MAX + MIN);
+    } else if (L > 0.5) {
+        S = (MAX - MIN) / (2 - MAX - MIN);
+    }
+    return [+H.toFixed(2), +S.toFixed(2), +L.toFixed(2)];
+}, _hsl2rgb = function (h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2;
+    var r, g, b;
+    if (h >= 0 && h < 60) {
+        r = (c + m) * 255;
+        g = (x + m) * 255;
+        b = m * 255;
+    } else if (h >= 60 && h < 120) {
+        r = (x + m) * 255;
+        g = (c + m) * 255;
+        b = m * 255;
+    } else if (h >= 120 && h < 180) {
+        r = m * 255;
+        g = (c + m) * 255;
+        b = (x + m) * 255;
+    } else if (h >= 180 && h < 240) {
+        r = m * 255;
+        g = (x + m) * 255;
+        b = (c + m) * 255;
+    } else if (h >= 240 && h < 300) {
+        r = (x + m) * 255;
+        g = m * 255;
+        b = (c + m) * 255;
+    } else if (h >= 300 && h < 360) {
+        r = (c + m) * 255;
+        g = m * 255;
+        b = (x + m) * 255;
+    }
+    return [+r.toFixed(0), +g.toFixed(0), +b.toFixed(0)];
+}, _randomColors = function (num) {
     if (typeof num == 'number' && num > 3) {
         var temp = [], flag = 0;
         for (flag = 1; flag <= num; flag++)
@@ -736,147 +677,43 @@ clay.getColors = function (num) {
     }
 };
 
+// 把颜色统一转变成rgba(x,x,x,x)格式
+// 返回数字数组[r,g,b,a]
+clay.color = function (color) {
+    var temp = clay('head').css('color', color).css('color').replace(/^rgba?\(([^)]+)\)$/, '$1').split(new RegExp('\\,' + _regexp.whitespace));
+    return [+temp[0], +temp[1], +temp[2], temp[3] == undefined ? 1 : +temp[3]];
+};
+
+// 获取一组色彩
+clay.getColors = function (num, range, rgb) {
+    if (!range) return _randomColors(num);
+
+    //num：需要的颜色个数
+    //range:数组，取值0-360，色彩范围
+    //rgb: 可选，数组，参考颜色，是一组rgb
+    var temp = (range[1] - range[0]) / num;
+    var s, l;
+    if (rgb) {
+        var hsl = _rgb2hsl(rgb[0], rgb[1], rgb[2]);
+        s = hsl[1]; l = hsl[2];
+    } else {
+        s = 0.78; l = 0.4;
+    }
+    var array = [];
+    for (var i = 0; i < num; i++) {
+        rgb = _hsl2rgb(temp * i + range[0], s, l);
+        array.push("rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")");
+    }
+    return array;
+};
+
 // 给一组数据，轮询执行一遍
 clay.loop = function (datas, callback) {
-    var flag = 0, data;
+    var flag = 0,
+        data;
     for (data in datas)
         callback(datas[data], data, flag++);
     return clay;
-};
-
-var _ajaxConfig = {
-    "headers": {},
-    "timeout": 3000,
-    "context": "",
-    "request": function (config) {
-        return config;
-    },
-    "success": function (data, doback) {
-        if (typeof doback == 'function') {
-            doback(data);
-        }
-    },
-    "error": function (error, doback) {
-        if (typeof doback == 'function') {
-            doback(error);
-        }
-    }
-};
-_provider.$httpProvider = function (config) {
-    var row;
-    for (row in config) {
-        _ajaxConfig[row] = config[row];
-    }
-};
-
-/**
- * XMLHttpRequest
- *
- * config={
- * "type":"POST"|"GET",
- * "url":地址,
- * "success":成功回调(非必须),
- * "error":错误回调(非必须),
- * "fileload":文件传输进度回调(非必须),
- * "timeout":超时时间,
- * "header":{
- *          //请求头
- *      },
- * "data":post时带的数据（非必须）
- * }
- */
-var _ajax = function (config) {
-    config = _ajaxConfig.request(config);
-    var i;
-
-    // 获取xhr对象
-    var xhr = window.XMLHttpRequest ?
-        // IE7+, Firefox, Chrome, Opera, Safari
-        new XMLHttpRequest() :
-        // IE6, IE5
-        new ActiveXObject("Microsoft.XMLHTTP");
-
-    // 打开请求地址
-    if (!/^\//.test(config.url)) config.url = _ajaxConfig.context + "" + config.url;
-    xhr.open(config.type, config.url, true);
-
-    // 设置超时时间
-    xhr.timeout = config.timeout || _ajaxConfig.timeout;
-
-    // 文件传递进度回调
-    if (typeof config.fileload == 'function') {
-        var updateProgress = function (e) {
-            if (e.lengthComputable)
-                config.fileload(e.loaded / e.total);
-        };
-        xhr.onprogress = updateProgress;
-        xhr.upload.onprogress = updateProgress;
-    }
-
-    // 请求成功回调
-    xhr.onload = function () {
-        _ajaxConfig.success({
-            "response": xhr.response,
-            "status": xhr.status,
-            "header": xhr.getAllResponseHeaders()
-        }, config.success);
-    };
-
-    // 错误回调
-    // 请求中出错回调
-    xhr.onerror = function () {
-        _ajaxConfig.error({
-            "type": "error"
-        }, config.error);
-    };
-    // 请求超时回调
-    xhr.ontimeout = function () {
-        _ajaxConfig.error({
-            "type": "timeout"
-        }, config.error);
-    };
-
-    // 配置请求头
-    for (i in _ajaxConfig.headers)
-        xhr.setRequestHeader(i, _ajaxConfig.headers[i]);
-    for (i in config.header)
-        xhr.setRequestHeader(i, config.header[i]);
-
-    // 发送请求
-    xhr.send(config.data);
-};
-
-// post请求
-clay.post = function (header, timeout) {
-    var post = function (url, param, callback, errorback) {
-        _ajax({
-            "type": "POST",
-            "url": url,
-            "success": callback,
-            "error": errorback,
-            "timeout": timeout,
-            "header": header || {},
-            "data": param ? JSON.stringify(param) : ""
-        });
-        return post;
-    };
-    return post;
-};
-
-// get请求
-clay.get = function (header, timeout) {
-    var get = function (url, callback, errorback) {
-        _ajax({
-            "type": "GET",
-            "url": url,
-            "success": callback,
-            "error": errorback,
-            "timeout": timeout,
-            "header": header || {}
-        });
-        return get;
-    };
-    return get;
 };
 
 // 用特定色彩绘制区域
@@ -1029,6 +866,205 @@ clay.prototype.layer = function () {
 
 };
 
+// 二个4x4矩阵相乘
+// 或矩阵和齐次坐标相乘
+var _multiply = function (matrix4, param) {
+    var newParam = [], i, j;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < param.length / 4; j++)
+            newParam[j * 4 + i] =
+                matrix4[i] * param[j * 4] +
+                matrix4[i + 4] * param[j * 4 + 1] +
+                matrix4[i + 8] * param[j * 4 + 2] +
+                matrix4[i + 12] * param[j * 4 + 3];
+    return newParam;
+};
+
+// 求一个矩阵的行列式（方阵）
+// 4x4 或 3x3
+var _determinant = function (matrixX) {
+
+    // 3x3
+    if (matrixX.length == 9) {
+        return matrixX[0] * matrixX[4] * matrixX[8] -
+            matrixX[0] * matrixX[7] * matrixX[5] -
+            matrixX[3] * matrixX[1] * matrixX[8] +
+            matrixX[3] * matrixX[7] * matrixX[2] +
+            matrixX[6] * matrixX[1] * matrixX[5] -
+            matrixX[6] * matrixX[4] * matrixX[2];
+    }
+
+    // 4x4
+    else if (matrixX.length == 16) {
+        return matrixX[0] * _determinant([
+            matrixX[5], matrixX[6], matrixX[7],
+            matrixX[9], matrixX[10], matrixX[11],
+            matrixX[13], matrixX[14], matrixX[15]
+        ]) -
+            matrixX[4] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[9], matrixX[10], matrixX[11],
+                matrixX[13], matrixX[14], matrixX[15]
+            ]) +
+            matrixX[8] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[5], matrixX[6], matrixX[7],
+                matrixX[13], matrixX[14], matrixX[15]
+            ]) -
+            matrixX[12] * _determinant([
+                matrixX[1], matrixX[2], matrixX[3],
+                matrixX[5], matrixX[6], matrixX[7],
+                matrixX[9], matrixX[10], matrixX[11]
+            ]);
+    }
+
+    // 其它情况
+    else {
+        throw new Error('Unsupported parameter!');
+    }
+
+};
+
+// 求一个4x4矩阵的全部代数余子式Aij
+var _algebraic_cofactor = function (matrix4) {
+    return [
+
+        // 0
+        _determinant([
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[9], matrix4[10], matrix4[11],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 1
+        -_determinant([
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[8], matrix4[10], matrix4[11],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 2
+        _determinant([
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[8], matrix4[8], matrix4[11],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 3
+        -_determinant([
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[8], matrix4[9], matrix4[10],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 4
+        -_determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[9], matrix4[10], matrix4[11],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 5
+        _determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[8], matrix4[10], matrix4[11],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 6
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[8], matrix4[9], matrix4[11],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 7
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[8], matrix4[9], matrix4[10],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 8
+        _determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[13], matrix4[14], matrix4[15]
+        ]),
+
+        // 9
+        -_determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[12], matrix4[14], matrix4[15]
+        ]),
+
+        // 10
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[12], matrix4[13], matrix4[15]
+        ]),
+
+        // 11
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[12], matrix4[13], matrix4[14]
+        ]),
+
+        // 12
+        -_determinant([
+            matrix4[1], matrix4[2], matrix4[3],
+            matrix4[5], matrix4[6], matrix4[7],
+            matrix4[9], matrix4[10], matrix4[11]
+        ]),
+
+        // 13
+        _determinant([
+            matrix4[0], matrix4[2], matrix4[3],
+            matrix4[4], matrix4[6], matrix4[7],
+            matrix4[8], matrix4[10], matrix4[11]
+        ]),
+
+        // 14
+        -_determinant([
+            matrix4[0], matrix4[1], matrix4[3],
+            matrix4[4], matrix4[5], matrix4[7],
+            matrix4[8], matrix4[9], matrix4[11]
+        ]),
+
+        // 15
+        _determinant([
+            matrix4[0], matrix4[1], matrix4[2],
+            matrix4[4], matrix4[5], matrix4[6],
+            matrix4[8], matrix4[9], matrix4[10]
+        ])
+    ];
+};
+
+// 求一个4x4矩阵的伴随矩阵A*
+var _adjoint_matrix = function (matrix4) {
+    var algebraic_cofactor = _algebraic_cofactor(matrix4);
+    return [
+        algebraic_cofactor[0], algebraic_cofactor[4], algebraic_cofactor[8], algebraic_cofactor[12],
+        algebraic_cofactor[1], algebraic_cofactor[5], algebraic_cofactor[9], algebraic_cofactor[13],
+        algebraic_cofactor[2], algebraic_cofactor[6], algebraic_cofactor[10], algebraic_cofactor[14],
+        algebraic_cofactor[3], algebraic_cofactor[7], algebraic_cofactor[11], algebraic_cofactor[15]
+    ];
+};
+
+// 求一个4x4矩阵的逆矩阵A'
+var _inverse_matrix = function (matrix4) {
+    var adjoint = _adjoint_matrix(matrix4),
+        determinant = _determinant(matrix4),
+        flag, newMatrix4 = [];
+    if (determinant == 0) throw new Error('This matrix is irreversible!');
+    for (flag = 0; flag < 16; flag++)
+        newMatrix4[flag] = adjoint[flag] / determinant;
+    return newMatrix4;
+};
+
 // 在(a,b,c)方向位移d
 var _move = function (d, a, b, c) {
     c = c || 0;
@@ -1121,24 +1157,6 @@ var _transform = function (a1, b1, c1, a2, b2, c2) {
     }
 };
 
-// 二个4x4矩阵相乘
-// 或矩阵和齐次坐标相乘
-var _multiply = function (matrix4, param) {
-    var newParam = [], i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < param.length / 4; j++)
-            newParam[j * 4 + i] =
-                matrix4[i] * param[j * 4] +
-                matrix4[i + 4] * param[j * 4 + 1] +
-                matrix4[i + 8] * param[j * 4 + 2] +
-                matrix4[i + 12] * param[j * 4 + 3];
-    return newParam;
-};
-
-/**
- * 4x4矩阵
- * 列主序存储
- */
 clay.Matrix4 = function (initMatrix4) {
 
     var matrix4 = initMatrix4 || [
@@ -1149,25 +1167,39 @@ clay.Matrix4 = function (initMatrix4) {
     ];
 
     var matrix4Obj = {
+
+        // 移动
         "move": function (dis, a, b, c) {
             matrix4 = _multiply(_move(dis, a, b, c), matrix4);
             return matrix4Obj;
         },
+
+        // 旋转
         "rotate": function (deg, a1, b1, c1, a2, b2, c2) {
             var matrix4s = _transform(a1, b1, c1, a2, b2, c2);
             matrix4 = _multiply(_multiply(_multiply(matrix4s[1], _rotate(deg)), matrix4s[0]), matrix4);
             return matrix4Obj;
         },
+
+        // 缩放
         "scale": function (xTimes, yTimes, zTimes, cx, cy, cz) {
             matrix4 = _multiply(_scale(xTimes, yTimes, zTimes, cx, cy, cz), matrix4);
             return matrix4Obj;
         },
+
         // 乘法
         // 可以传入一个矩阵(matrix4,flag)
         "multiply": function (newMatrix4, flag) {
             matrix4 = flag ? _multiply(matrix4, newMatrix4) : _multiply(newMatrix4, matrix4);
             return matrix4Obj;
         },
+
+        // 逆矩阵
+        "inverse": function () {
+            matrix4 = _inverse_matrix(matrix4);
+            return matrix4Obj;
+        },
+
         // 对一个坐标应用变换
         // 齐次坐标(x,y,z,w)
         "use": function (x, y, z, w) {
@@ -1179,9 +1211,12 @@ clay.Matrix4 = function (initMatrix4) {
             temp[2] = temp[2].toFixed(7);
             return temp;
         },
+
+        // 矩阵的值
         "value": function () {
             return matrix4;
         }
+
     };
 
     return matrix4Obj;
@@ -1454,677 +1489,373 @@ clay.scale = function (cx, cy, times, x, y) {
     ];
 };
 
-// 绘图方法挂载钩子
-clay.svg = {};
-clay.canvas = {};
-
-// 基本的canvas对象
-// config采用canvas设置属性的api
-// 前二个参数不是必输项
-// 绘制前再提供下面提供的方法设置也是可以的
-// 第三个参数代表图形绘制控制方法
-// 最后一个是配置给控制方法的参数
-var _canvas = function (_selector, config, painterback, param) {
-
-    var key, temp = painterback(param);
-    temp._p = _getCanvas2D(_selector);
-
-    if (config)
-        for (key in config)
-            temp._p[key] = config[key];
-
-    // 设置画笔
-    temp.painter = function (selector) {
-        temp._p = _getCanvas2D(selector);
-        return temp;
-    };
-
-    // 配置画笔
-    temp.config = function (_config) {
-        for (key in _config)
-            temp._p[key] = _config[key];
-        return temp;
-    };
-
-    return temp;
-
+// 把着色器字符串加载成着色器对象
+var _loadShader = function (gl, type, source) {
+    // 创建着色器对象
+    var shader = gl.createShader(type);
+    if (shader == null) throw new Error('Unable to create shader!');
+    // 绑定资源
+    gl.shaderSource(shader, source);
+    // 编译着色器
+    gl.compileShader(shader);
+    // 检测着色器编译是否成功
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        throw new Error('Failed to compile shader:' + gl.getShaderInfoLog(shader));
+    return shader;
 };
 
-// 弧
-var _arc = function (painter) {
-
-    var scope = {
-        c: [0, 0],
-        r: [100, 140],
-        t: []
-    };
-
-    // r1和r2，内半径和外半径
-    // beginA起点弧度，rotateA旋转弧度式
-    var arc = function (beginA, rotateA, r1, r2) {
-        if (rotateA > Math.PI * 2) rotateA = Math.PI * 2;
-        if (rotateA < -Math.PI * 2) rotateA = -Math.PI * 2;
-
-        // 保证逆时针也是可以的
-        if (rotateA < 0) {
-            beginA += rotateA;
-            rotateA *= -1;
-        }
-
-        if (typeof r1 !== 'number') r1 = scope.r[0];
-        if (typeof r2 !== 'number') r2 = scope.r[1];
-
-        var temp = [], p;
-
-        // 内部
-        p = _rotateZ(beginA, r1, 0, 0);
-        temp[0] = p[0];
-        temp[1] = p[1];
-        p = _rotateZ(rotateA, p[0], p[1], 0);
-        temp[2] = p[0];
-        temp[3] = p[1];
-
-        // 外部
-        p = _rotateZ(beginA, r2, 0, 0);
-        temp[4] = p[0];
-        temp[5] = p[1];
-        p = _rotateZ(rotateA, p[0], p[1], 0);
-        temp[6] = p[0];
-        temp[7] = p[1];
-
-        return painter(
-            scope.c[0], scope.c[1],
-            r1, r2,
-            beginA, beginA + rotateA,
-            temp[0] + scope.c[0], temp[1] + scope.c[1],
-            temp[4] + scope.c[0], temp[5] + scope.c[1],
-            temp[2] + scope.c[0], temp[3] + scope.c[1],
-            temp[6] + scope.c[0], temp[7] + scope.c[1],
-            scope.t, (r2 - r1) * 0.5
-        );
-    };
-
-    // 设置内外半径
-    arc.setRadius = function (r1, r2) {
-        scope.r = [r1, r2];
-        return arc;
-    };
-
-    // 设置弧中心
-    arc.setCenter = function (x, y) {
-        scope.c = [x, y];
-        return arc;
-    };
-
-    // 设置起点和终点样式
-    arc.lineCap = function (beginCircle, endCircle) {
-        scope.t = [beginCircle, endCircle];
-        return arc;
-    };
-
-    return arc;
-
+// 初始化着色器
+var _useShader = function (gl, vshaderSource, fshaderSource) {
+    // 分别加载顶点着色器对象和片段着色器对象
+    var vertexShader = _loadShader(gl, gl.VERTEX_SHADER, vshaderSource),
+        fragmentShader = _loadShader(gl, gl.FRAGMENT_SHADER, fshaderSource);
+    // 创建一个着色器程序
+    var glProgram = gl.createProgram();
+    // 把前面创建的二个着色器对象添加到着色器程序中
+    gl.attachShader(glProgram, vertexShader);
+    gl.attachShader(glProgram, fragmentShader);
+    // 把着色器程序链接成一个完整的程序
+    gl.linkProgram(glProgram);
+    // 检测着色器程序链接是否成功
+    if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS))
+        throw new Error('Failed to link program: ' + gl.getProgramInfoLog(glProgram));
+    // 使用这个完整的程序
+    gl.useProgram(glProgram);
+    return glProgram;
 };
 
-// 采用SVG绘制圆弧
-clay.svg.arc = function () {
-    return _arc(
-        function (
-            cx, cy,
-            rmin, rmax,
-            beginA, endA,
-            begInnerX, begInnerY,
-            begOuterX, begOuterY,
-            endInnerX, endInnerY,
-            endOuterX, endOuterY,
-            t, r
-        ) {
-            var f = (endA - beginA) > Math.PI ? 1 : 0,
-                d = "M" + begInnerX + " " + begInnerY;
-            if (r < 0) r = -r;
-            d +=
-                // 横半径 竖半径 x轴偏移角度 0小弧/1大弧 0逆时针/1顺时针 终点x 终点y
-                "A" + rmin + " " + rmin + " 0 " + f + " 1 " + endInnerX + " " + endInnerY;
-            // 结尾
-            if (!t[1])
-                d += "L" + endOuterX + " " + endOuterY;
-            else
-                d += "A" + r + " " + r + " " + " 0 1 0 " + endOuterX + " " + endOuterY;
-            d += "A" + rmax + " " + rmax + " 0 " + f + " 0 " + begOuterX + " " + begOuterY;
-            // 开头
-            if (!t[0])
-                d += "L" + begInnerX + " " + begInnerY;
-            else
-                d += "A" + r + " " + r + " " + " 0 1 0 " + begInnerX + " " + begInnerY;
-            return d;
-        }
-    );
+// 获取一个新的缓冲区
+// isElement默认false，创建第一种缓冲区，为true创建第二种
+var _newBuffer = function (gl, isElement) {
+    var buffer = gl.createBuffer(),
+        TYPE = isElement ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+    // 把缓冲区对象绑定到目标
+    gl.bindBuffer(TYPE, buffer);
+    return buffer;
 };
 
-// 采用Canvas绘制圆弧
-clay.canvas.arc = function (selector, config) {
-
-    var key,
-        obj =
-            // 返回画扇形图的流程控制函数
-            // 并且返回的函数挂载了canvas特有的方法和属性
-            // 因此称之为基本的canvas对象
-            _canvas(selector, config, _arc, function (
-                cx, cy,
-                rmin, rmax,
-                beginA, endA,
-                begInnerX, begInnerY,
-                begOuterX, begOuterY,
-                endInnerX, endInnerY,
-                endOuterX, endOuterY,
-                t, r
-            ) {
-                if (r < 0) r = -r;
-                obj._p.beginPath();
-                obj._p.moveTo(begInnerX, begInnerY);
-                obj._p.arc(
-                    // (圆心x，圆心y，半径，开始角度，结束角度，true逆时针/false顺时针)
-                    cx, cy, rmin, beginA, endA, false);
-                // 结尾
-                if (!t[1])
-                    obj._p.lineTo(endOuterX, endOuterY);
-                else
-                    obj._p.arc((endInnerX + endOuterX) * 0.5, (endInnerY + endOuterY) * 0.5, r, endA - Math.PI, endA, true);
-                obj._p.arc(cx, cy, rmax, endA, beginA, true);
-                // 开头
-                if (!t[0])
-                    obj._p.lineTo(begInnerX, begInnerY);
-                else
-                    obj._p.arc((begInnerX + begOuterX) * 0.5, (begInnerY + begOuterY) * 0.5, r, beginA, beginA - Math.PI, true);
-                return obj._p;
-
-            });
-
-    return obj;
-
+// 数据写入缓冲区
+// data是一个类型化数组，表示写入的数据
+// usage表示程序如何使用存储在缓冲区的数据
+var _writeBuffer = function (gl, data, usage, isElement) {
+    var TYPE = isElement ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+    gl.bufferData(TYPE, data, usage);
 };
 
-// 矩形
-var _rect = function (painter) {
-
-    var scope = {
-        s: 10,
-        t: ["LR"]
-    };
-
-    /**
-     * 绘制矩形
-     * @param {number} x 矩形起点的x坐标
-     * @param {number} y 矩形起点的y坐标
-     * @param {number} length 矩形长度
-     * @param {number} deg 只有在使用旋转定位的时候才需要传递，表示旋转角度
-     */
-    var rect = function (x, y, length, deg) {
-        // 记录矩形的四个角坐标
-        var position, s2 = scope.s * 0.5;
-
-        // 分类前准备
-        if (scope.t[0] == "RL" || scope.t[0] == "BT") {
-            length = -length;
-            scope.t[0] = {
-                "RL": "LR",
-                "BT": "TB"
-            }[scope.t[0]];
-        }
-
-        // 分类计算
-        switch (scope.t[0]) {
-            case "LR":
-                position = [
-                    [x, y - s2],
-                    [x + length, y - s2],
-                    [x + length, y + s2],
-                    [x, y + s2]
-                ];
-                break;
-            case "TB":
-                position = [
-                    [x + s2, y],
-                    [x + s2, y + length],
-                    [x - s2, y + length],
-                    [x - s2, y]
-                ];
-                break;
-            default:
-                deg = deg || 0;
-                position = [
-                    clay.rotate(scope.t[1], scope.t[2], deg + scope.t[0], x, y - s2),
-                    clay.rotate(scope.t[1], scope.t[2], deg + scope.t[0], x + length, y - s2),
-                    clay.rotate(scope.t[1], scope.t[2], deg + scope.t[0], x + length, y + s2),
-                    clay.rotate(scope.t[1], scope.t[2], deg + scope.t[0], x, y + s2)
-                ];
-        }
-        return painter(position);
-    };
-
-    // 设置矩形木棒的粗细
-    rect.setSize = function (size) {
-        scope.s = size;
-        return rect;
-    };
-
-    // 设置矩形方向类型
-    // 可以设置参数：
-    // 1.垂直或水平 "LR"、"RL"、"TB"、"BT"
-    // 2.任意角度 (deg,cx,cy)，deg表示初始角度，(cx,cy)表示旋转圆心
-    rect.setType = function (type, cx, cy) {
-        scope.t = [type, cx, cy];
-        return rect;
-    };
-
-    return rect;
-
+// 使用缓冲区数据
+// location指定待分配的attribute变量的存储位置
+// size每个分量个数
+// type数据类型，应该是以下的某个：
+//      gl.UNSIGNED_BYTE    Uint8Array
+//      gl.SHORT            Int16Array
+//      gl.UNSIGNED_SHORT   Uint16Array
+//      gl.INT              Int32Array
+//      gl.UNSIGNED_INT     Uint32Array
+//      gl.FLOAT            Float32Array
+// stride相邻二个数据项的字节数
+// offset数据的起点字节位置
+// normalized是否把非浮点型的数据归一化到[0,1]或[-1,1]区间
+var _useBuffer = function (gl, location, size, type, stride, offset, normalized) {
+    // 把缓冲区对象分配给目标变量
+    gl.vertexAttribPointer(location, size, type, normalized || false, stride || 0, offset || 0);
+    // 连接目标对象和缓冲区对象
+    gl.enableVertexAttribArray(location);
 };
 
-// 采用SVG绘制矩形
-clay.svg.rect = function () {
-    return _rect(
-        function (p) {
-            return "M" + p[0][0] + "," + p[0][1] + " " +
-                "L" + p[1][0] + "," + p[1][1] + " " +
-                "L" + p[2][0] + "," + p[2][1] + " " +
-                "L" + p[3][0] + "," + p[3][1] + " " +
-                "L" + p[0][0] + "," + p[0][1] + " ";
-        }
-    );
+// 删除缓冲区
+var _deleteBuffer = function (gl, buffer) {
+    gl.deleteBuffer(buffer);
 };
 
-// 采用Canvas绘制矩形
-clay.canvas.rect = function (selector, config) {
-
-    var key,
-        obj =
-            _canvas(selector, config, _rect, function (p) {
-                obj._p.beginPath();
-                obj._p.moveTo(p[0][0], p[0][1]);
-                obj._p.lineTo(p[1][0], p[1][1]);
-                obj._p.lineTo(p[2][0], p[2][1]);
-                obj._p.lineTo(p[3][0], p[3][1]);
-                obj._p.lineTo(p[0][0], p[0][1]);
-                return obj._p;
-
-            });
-
-    return obj;
-
+// 初始化一个纹理对象
+// type有两个选择gl.TEXTURE_2D代表二维纹理，gl.TEXTURE_CUBE_MAP 立方体纹理
+var _initTexture = function (gl, unit, type) {
+    // 创建纹理对象
+    var texture = gl.createTexture();
+    // 开启纹理单元，unit表示开启的编号
+    gl.activeTexture(gl['TEXTURE' + unit]);
+    // 绑定纹理对象到目标上
+    gl.bindTexture(type, texture);
+    return texture;
 };
 
-// 曲线
-var _line = function (painter) {
-
-    var scope = {
-        d: 5
-    },
-        hermite = clay.hermite().setU(-1);
-
-    /**
-     * 绘制曲线
-     */
-    var line = function (points) {
-        var i = 0, temp = "M" + points[0][0] + "," + points[0][1];
-        var l, r;
-        for (; i < points.length - 1; i++) {
-            l = i == 0 ? 0 : i - 1;
-            r = i == points.length - 2 ? points.length - 1 : i + 2;
-            hermite.setP(
-                points[i][0], points[i][1],
-                points[i + 1][0], points[i + 1][1],
-                (points[i + 1][1] - points[l][1]) / (points[i + 1][0] - points[l][0]),
-                (points[r][1] - points[i][1]) / (points[r][0] - points[i][0])
-            );
-            temp = painter(hermite, points[i][0], points[i + 1][0], temp, scope.d);
-        }
-        return temp;
-    };
-
-    // 设置精度
-    line.setPrecision = function (dis) {
-        scope.d = dis;
-        return line;
-    };
-
-    // 设置张弛系数
-    line.setU = function (u) {
-        hermite.setU(u);
-        return line;
-    };
-
-    return line;
-
-};
-
-// 采用SVG绘制曲线
-clay.svg.line = function () {
-    return _line(
-        function (
-            hermite, bx, ex, d, dis
-        ) {
-            for (; bx < ex; bx += dis)
-                d = d + " L" + bx + "," + hermite(bx);
-            d = d + " L" + ex + "," + hermite(ex);
-            return d;
-        }
-    );
-};
-
-// 采用Canvas绘制曲线
-clay.canvas.line = function (selector, config) {
-    var key,
-        obj =
-            _canvas(selector, config, _line, function (
-                hermite, bx, ex, flag, dis
-            ) {
-                if (typeof flag == 'string') {
-                    obj._p.beginPath();
-                    obj._p.moveTo(bx, hermite(bx));
-                }
-                for (; bx < ex; bx += dis)
-                    obj._p.lineTo(bx, hermite(bx));
-                obj._p.lineTo(ex, hermite(ex));
-                return obj._p;
-            });
-    return obj;
-};
-
-// 文字
-var _text = function (painter) {
-
-    var scope = {
-        p: []
-    };
-
-    /**
-     * 绘制文字
-     * @param {number} x 文字坐标
-     * @param {number} y
-     * @param {string|number} text 绘制的文字
-     */
-    var text = function (x, y, text, deg) {
-        deg = !deg ? 0 : (deg * 180 / Math.PI);
-        return painter(x, y, text, deg, scope.p[0], scope.p[1], scope.c || "#000", scope.s || 16);
-    };
-
-    // 设置对齐方式
-    text.setAlign = function (horizontal, vertical) {
-        scope.p = [horizontal, vertical];
-        return text;
-    };
-
-    // 设置字体大小
-    text.setSize = function (size) {
-        scope.s = size;
-        return text;
-    };
-
-    // 设置字颜色
-    text.setColor = function (color) {
-        scope.c = color;
-        return text;
-    };
-
-    return text;
-
-};
-
-// 采用SVG绘制文字
-clay.svg.text = function () {
-    return _text(
-        function (
-            x, y, text, deg, horizontal, vertical, color, fontSize
-        ) {
-
-            // 针对IE和edge特殊计算
-            if (_browser == 'IE' || _browser == 'Edge') {
-                if (vertical == "top") {
-                    y += fontSize;
-                }
-                if (vertical == "middle") {
-                    y += fontSize * 0.5;
-                }
-            }
-
-            var rotate = !deg ? "" : "transform='rotate(" + deg + "," + x + "," + y + ")'";
-            return clay('<text fill=' + color + ' x="' + x + '" y="' + y + '" ' + rotate + '>' + text + '</text>').css({
-                // 文本水平
-                "text-anchor": {
-                    "left": "start",
-                    "right": "end"
-                }[horizontal] || "middle",
-                // 本垂直
-                "dominant-baseline": {
-                    "top": "text-before-edge",
-                    "bottom": {
-                        "Safari": "auto"
-                    }[_browser] ||
-                        "ideographic"
-                }[vertical] ||
-                    {
-                        "Firefox": "middle"
-                    }[_browser] ||
-                    "central",
-                "font-size": fontSize + "px",
-                "font-family": "sans-serif"
-            });
-        }
-    );
-};
-
-// 采用Canvas绘制文字
-clay.canvas.text = function (selector, config) {
-
-    var key,
-        obj =
-            _canvas(selector, config, _text, function (
-                x, y, text, deg, horizontal, vertical, color, fontSize
-            ) {
-
-                obj._p.save();
-                obj._p.beginPath();
-                obj._p.textAlign = {
-                    "left": "start",
-                    "right": "end"
-                }[horizontal] || "center";
-                obj._p.textBaseline = {
-                    "top": "top",
-                    "bottom": "bottom"
-                }[vertical] || "middle";
-                obj._p.font = fontSize + 'px sans-serif';//字体大小
-                obj._p.translate(x, y);
-                obj._p.rotate(deg);
-                obj._p.fillStyle = color;
-                obj._p.fillText(text, 0, 0);
-                obj._p.restore();
-                return obj._p;
-            });
-
-    return obj;
-
-};
-
-// 贝塞尔曲线
-var _bezier = function (painter) {
-
-    var scope = {},
-
+// 配置纹理
+var _configTexture = function (gl, type, config) {
+    var key;
+    for (key in config) {
         /**
-         * 绘制贝塞尔曲线（主要是连接关系点的时候用）
-         * @param {number} bx 起点坐标(bx,by)
-         * @param {number} by
-         * @param {number} ex 终点坐标(ex,ey)
-         * @param {number} ey
+         *
+         * 可配置项有四个：
+         *  1. gl.TEXTURE_MAX_FILTER：放大方法
+         *  2. gl.TEXTURE_MIN_FILTER：缩小方法
+         *  3. gl.TEXTURE_WRAP_S：水平填充方法
+         *  4. gl.TEXTURE_WRAP_T：垂直填充方法
+         *
          */
-        bezier = function (bx, by, ex, ey) {
-            var bdirection, edirection;
-            if (scope.t[2] == 'normal') {
-                bdirection = [scope.t[0], scope.t[1]];
-                edirection = [-scope.t[0], -scope.t[1]];
-            } else if (scope.t[2] == 'circle') {
-                bdirection = [bx - scope.t[0], by - scope.t[1]];
-                if (
-                    (scope.t[0] - bx) * (scope.t[0] - bx) + (scope.t[1] - by) * (scope.t[1] - by) ==
-                    (scope.t[0] - ex) * (scope.t[0] - ex) + (scope.t[1] - ey) * (scope.t[1] - ey)
-                )
-                    bdirection = [scope.t[0] - bx, scope.t[1] - by];
-                else
-                    bdirection = [bx - scope.t[0], by - scope.t[1]];
-                edirection = [scope.t[0] - ex, scope.t[1] - ey];
-            } else {
-                throw new Error('Illegal type!');
+        gl.texParameteri(type, gl[key], gl[config[key]]);
+    }
+};
+
+// 链接资源图片
+// level默认传入0即可，和金字塔纹理有关
+// format表示图像的内部格式：
+//      gl.RGB(红绿蓝)
+//      gl.RGBA(红绿蓝透明度)
+//      gl.ALPHA(0.0,0.0,0.0,透明度)
+//      gl.LUMINANCE(L、L、L、1L:流明)
+//      gl.LUMINANCE_ALPHA(L、L、L,透明度)
+// textureType表示纹理数据的格式：
+//      gl.UNSIGNED_BYTE: 表示无符号整形，每一个颜色分量占据1字节
+//      gl.UNSIGNED_SHORT_5_6_5: 表示RGB，每一个分量分别占据占据5, 6, 5比特
+//      gl.UNSIGNED_SHORT_4_4_4_4: 表示RGBA，每一个分量分别占据占据4, 4, 4, 4比特
+//      gl.UNSIGNED_SHORT_5_5_5_1: 表示RGBA，每一个分量分别占据占据5比特，A分量占据1比特
+var _linkImage = function (gl, type, level, format, textureType, image) {
+    gl.texImage2D(type, level, format, format, textureType, image);
+};
+
+// 删除纹理
+var _deleteTexture = function (gl, texture) {
+    gl.deleteTexture(texture);
+};
+
+// 获取webgl上下文
+function _getCanvasWebgl(node, opts) {
+    var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"],
+        context = null, i;
+    for (i = 0; i < names.length; i++) {
+        try {
+            context = node.getContext(names[i], opts);
+        } catch (e) { }
+        if (context) break;
+    }
+    return context;
+}
+
+// 启动webgl绘图
+clay.prototype.webgl = function (opts) {
+    var gl = _getCanvasWebgl(this[0], opts),
+        glObj = {
+            "painter": function () {
+                return gl;
+            },
+
+            // 启用着色器
+            "shader": function (vshaderSource, fshaderSource) {
+                gl.program = _useShader(gl, vshaderSource, fshaderSource);
+                return glObj;
+            },
+
+            // 缓冲区
+            "buffer": function (isElement) {
+                // 创建缓冲区
+                var buffer = _newBuffer(gl, isElement),
+                    bufferData,
+                    bufferObj = {
+                        // 写入数据
+                        "write": function (data, usage) {
+                            usage = usage || gl.STATIC_DRAW;
+                            _writeBuffer(gl, data, usage, isElement);
+                            bufferData = data;
+                            return bufferObj;
+                        },
+                        // 分配使用
+                        "use": function (location, size, stride, offset, type, normalized) {
+                            var fsize = bufferData.BYTES_PER_ELEMENT;
+                            if (typeof location == 'string') location = gl.getAttribLocation(gl.program, location);
+                            stride = stride || 0;
+                            offset = offset || 0;
+                            type = type || gl.FLOAT;
+                            _useBuffer(gl, location, size, type, stride * fsize, offset * fsize, normalized);
+                            return bufferObj;
+                        },
+                        // 关闭退出
+                        "close": function () {
+                            _deleteBuffer(gl, buffer);
+                            return glObj;
+                        }
+                    };
+                return bufferObj;
+            },
+
+            // 纹理
+            "texture": function (unit, type) {
+                type = type || gl.TEXTURE_2D;
+                // 创建纹理
+                var texture = _initTexture(gl, unit, type);
+                var textureObj = {
+                    // 配置纹理对象
+                    "config": function (config) {
+                        _configTexture(gl, type, config);
+                        return textureObj;
+                    },
+                    // 链接图片资源
+                    "use": function (level, format, textureType, image) {
+                        _linkImage(gl, type, level, format, textureType, image);
+                        return textureObj;
+                    },
+                    // 关闭纹理
+                    "close": function () {
+                        _deleteTexture(gl, texture);
+                        return glObj;
+                    }
+                };
+                return textureObj;
             }
-            return painter(
-                [bx, by], //起点
-                [ex, ey], //终点
-                clay.move(bdirection[0], bdirection[1], scope.l, bx, by), //起点控制点
-                clay.move(edirection[0], edirection[1], scope.l, ex, ey) //终点控制点
-            );
+
         };
 
-    // 设置曲线类型，可选类型有二种：
-    // 1.type="normal",(dx,dy)是参考方向
-    // 2.type="circle",(dx,dy)是参考中心
-    // 缺省类型是"normal"
-    bezier.setType = function (dx, dy, type) {
-        if (!type) type = 'normal';
-        scope.t = [dx, dy, type];
-        return bezier;
-    };
-
-    // 设置控制把柄的长度
-    bezier.setL = function (length) {
-        scope.l = length;
-        return bezier;
-    };
-
-    return bezier;
-
+    return glObj;
 };
 
-// 采用SVG绘制贝塞尔曲线
-clay.svg.bezier = function () {
-    return _bezier(
-        function (
-            beginP, endP, beginCtrlP, endCtrlP
-        ) {
-            return "M" + beginP[0] + "," + beginP[1] + " " +
-                "C" + beginCtrlP[0] + "," + beginCtrlP[1] + " " +
-                endCtrlP[0] + "," + endCtrlP[1] + " " +
-                endP[0] + "," + endP[1];
+//计算获得单位向量
+var _getUnitVector = function (x, y, z) {
+    var d = Math.sqrt(x * x + y * y + z * z);
+    return [x / d, y / d, z / d];
+},
+    //计算获得v1,v2两个向量的叉积
+    _getXMultiplyResult = function (v1, v2) {
+        return [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+        ];
+    };
+
+// 视图
+var _lookAt = function (
+    // 视点
+    eX, eY, eZ,
+    // 观察目标中心点
+    cX, cY, cZ,
+    // 上方向
+    upX, upY, upZ
+) {
+    eX = eX || 0; eY = eY || 0; eZ = eZ === 0 ? 0 : 1;
+    cX = cX || 0; cY = cY || 0; cZ = cZ || 0;
+    upX = upX || 0; upY = upY === 0 ? 0 : 1; upZ = upZ || 0;
+
+    if (upX === 0 && upY === 0 && upZ === 0)
+        throw new Error("The orientation above the camera cannot be a zero vector!");
+
+    if (eX === cX && eY === cY && eZ === cZ)
+        throw new Error("Viewpoint cannot coincide with target point!");
+
+    //获得相机拍摄方向的单位向量
+    var visualVector = _getUnitVector(cX - eX, cY - eY, cZ - eZ);
+    //获得上方向的单位向量
+    var upVector = _getUnitVector(upX, upY, upZ);
+    //根据visualVector和upVector叉积，求得右手螺旋定则的另一轴单位向量（x轴）
+    //visualVector X upVector
+    var xRailVector = _getXMultiplyResult(visualVector, upVector);
+    //计算该坐标系下原点位置
+    var O = [eX + visualVector[0], eY + visualVector[1], eZ + visualVector[2]];
+    /**
+     * 由此可以根据物体原坐标[OriginX,OriginY,OriginZ],计算出物体新坐标 [x,y,z] ：
+     *
+     *      i               j               k         z轴与相机拍摄方向相反，故取负号
+     *
+     * xRailVector[0]   upVector[0]   -visualVector[0]       x     OriginX     O[0]
+     * xRailVector[1]   upVector[1]   -visualVector[1]   X   y  =  OriginY  -  O[1]
+     * xRailVector[2]   upVector[2]   -visualVector[2]       z     OriginZ     O[2]
+     *
+     * 简写形式： AX=Ox-B
+     * 则         X=(A^-1)(Ox-B)
+     *
+     */
+    return clay.Matrix4([
+        xRailVector[0], xRailVector[1], xRailVector[2], 0,
+        upVector[0], upVector[1], upVector[2], 0,
+        -visualVector[0], -visualVector[1], -visualVector[2], 0,
+        0, 0, 0, 1
+    ]).inverse().multiply([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -O[0], -O[1], -O[2], 1
+    ], true).value();
+};
+
+// 正交投影
+// 投影向量和观察平面垂直
+// 物体坐标沿观察坐标系的z轴平行投影到观察平面上
+// 观察点和观察平面间的距离不会影响物体的投影大小
+// 取景范围是一个长方体
+// 只有在这个长方体中的景物才会被绘制出来
+var _orthogonal_projection = function (
+    // 裁剪面边界
+    left, right, top, bottom,
+    // 近裁剪面和远裁剪面
+    near, far
+) {
+    return [
+        2 / (right - left), 0, 0, 0,
+        0, 2 / (top - bottom), 0, 0,
+        0, 0, 2 / (near - far), 0,
+        (right + left) / (left - right),
+        (top + bottom) / (bottom - top),
+        (far + near) / (far - near),
+        1
+    ];
+};
+
+// 照相机
+clay.camera = function () {
+
+    var scope = {};
+
+    // 求解出最终的相机矩阵
+    var camera = function () {
+        var matrix;
+        if (scope.e && scope.c && scope.u) {
+            matrix = clay.Matrix4(_lookAt(
+                scope.e[0], scope.e[1], scope.e[2],
+                scope.c[0], scope.c[1], scope.c[2],
+                scope.u[0], scope.u[1], scope.u[2]
+            ));
+        } else {
+            matrix = clay.Matrix4();
         }
-    );
-};
-
-// 采用Canvas绘制贝塞尔曲线
-clay.canvas.bezier = function (selector, config) {
-
-    var key,
-        obj =
-            _canvas(selector, config, _bezier, function (
-                beginP, endP, beginCtrlP, endCtrlP
-            ) {
-                obj._p.beginPath();
-                obj._p.moveTo(beginP[0], beginP[1]);
-                obj._p.bezierCurveTo(
-                    beginCtrlP[0],// 第一个贝塞尔控制点的 x 坐标
-                    beginCtrlP[1],// 第一个贝塞尔控制点的 y 坐标
-                    endCtrlP[0],// 第二个贝塞尔控制点的 x 坐标
-                    endCtrlP[1],// 第二个贝塞尔控制点的 y 坐标
-                    endP[0], endP[1]);
-                return obj._p;
-
-            });
-
-    return obj;
-
-};
-
-// 多边形
-var _polygon = function (painter) {
-
-    var scope = {
-        /*
-         * 连接两点的曲线其实使用path的多段(L x,y)拼接而成，这些x,y就是由插值算法计算得出
-         * 设置d可以设置精度，d越大，精度越高，但是相应的计算量也会增加（计算时间增加）
-         */
-        d: 100
-    },
-        // 多边形插值方法
-        catmullRom = clay.catmullRom();
-
-    var polygon = function (point) {
-        // 原来的slice写法会阻止某些JavaScript引擎中的优化
-        // https://github.com/petkaantonov/bluebird/wiki/Optimization-killers#3-managing-arguments
-        // 替换使用apply方法实现
-        // https://www.ecma-international.org/ecma-262/6.0/#sec-function.prototype.apply
-        var p = (point.length === 1 ? [point[0]] : Array.apply(null, point));
-        p.push(p[0]);
-
-        var l = p.length;
-        //添加首尾控制点，用于绘制完整曲线
-        p.unshift(p[l - 2]);
-        p.push(p[2]);
-
-        var i = 1,
-            temp = "M" + p[1][0] + " " + p[1][1] + " ";
-        for (; i < l; i++) {
-            catmullRom.setP(p[i - 1], p[i], p[i + 1], p[i + 2]);
-            temp = painter(catmullRom, 0, 1 / scope.d, temp);
+        if (scope.f && scope.b) {
+            matrix.multiply(_orthogonal_projection(
+                scope.b[3], scope.b[1],
+                scope.b[0], scope.b[2],
+                scope.f[0], scope.f[1]
+            ));
         }
-        // 闭合
-        if (typeof temp == 'string') temp += " Z"; else temp.closePath();
-        return temp;
+        return matrix.value();
     };
 
-    polygon.setNum = function (num) {
-        //设置精度（即将p1,p2两点间的曲线段分成的段数）
-        scope.d = num;
-        return polygon;
+    // 视点
+    camera.setEye = function (eX, eY, eZ) {
+        scope.e = [eX, eY, eZ];
+        return camera;
     };
 
-    return polygon;
+    // 观察目标中心点
+    camera.setCenter = function (cX, cY, cZ) {
+        scope.c = [cX, cY, cZ];
+        return camera;
+    };
 
-};
+    // 上方向
+    camera.setUp = function (upX, upY, upZ) {
+        scope.u = [upX, upY, upZ];
+        return camera;
+    };
 
-// 采用SVG绘制多边形
-clay.svg.polygon = function () {
-    return _polygon(
-        function (
-            calcFn, start, dx, temp
-        ) {
-            for (; start <= 1; start += dx) {
-                var point = calcFn(start);
-                temp = temp + " L" + point[0] + "," + point[1];
-            }
-            return temp;
-        }
-    );
-};
+    // 设置裁剪面
+    camera.setFace = function (near, far) {
+        scope.f = [near, far];
+        return camera;
+    };
 
-// 采用Canvas绘制多边形
-clay.canvas.polygon = function (selector, config) {
+    // 设置边界
+    camera.setBorder = function (top, right, bottom, left) {
+        scope.b = [top, right, bottom, left];
+        return camera;
+    };
 
-    var key,
-        obj =
-            _canvas(selector, config, _polygon, function (
-                calcFn, start, dx, temp
-            ) {
-
-                var point = calcFn(start);
-                if (typeof temp == 'string') {
-                    obj._p.moveTo(point[0], point[1]);
-                }
-                for (; start <= 1; start += dx) {
-                    point = calcFn(start);
-                    obj._p.lineTo(point[0], point[1]);
-                }
-                return obj._p;
-            });
-
-    return obj;
+    return camera;
 
 };
 
@@ -2193,9 +1924,12 @@ clay.treeLayout = function () {
 
             })(alltreedata[rootid], 0);
 
-            // 画图
             // 传递的参数分别表示：记录了位置信息的树结点集合、根结点ID和树的宽
-            scope.e.drawer(alltreedata, rootid, size);
+            return {
+                "node": alltreedata,
+                "root": rootid,
+                "size": size
+            };
 
         };
 
@@ -2207,8 +1941,7 @@ clay.treeLayout = function () {
      *  "data":原始数据,
      *  "pid":父亲ID,
      *  "id":唯一标识ID,
-     *  "children":[cid1、cid2、...],
-     *  "show":boolean，表示该结点在计算位置的时候是否可见
+     *  "children":[cid1、cid2、...]
      * }
      */
     var toInnerTree = function (initTree) {
@@ -2221,8 +1954,7 @@ clay.treeLayout = function () {
             "data": temp,
             "pid": null,
             "id": id,
-            "children": [],
-            "show": true
+            "children": []
         };
         // 根据传递的原始数据，生成内部统一结构
         (function createTree(pdata, pid) {
@@ -2234,8 +1966,7 @@ clay.treeLayout = function () {
                     "data": children[flag],
                     "pid": pid,
                     "id": id,
-                    "children": [],
-                    "show": true
+                    "children": []
                 };
                 createTree(children[flag], id);
             }
@@ -2251,8 +1982,7 @@ clay.treeLayout = function () {
         var treeData = toInnerTree(initTree);
         alltreedata = treeData[1];
         rootid = treeData[0];
-        update();
-        return tree;
+        return update();
 
     };
 
@@ -2274,293 +2004,16 @@ clay.treeLayout = function () {
         return tree;
     };
 
-    // 结点更新处理方法 drawer(alltreedata, rootid, size)
-    tree.drawer = function (drawerback) {
-        scope.e.drawer = drawerback;
-        return tree;
-    };
-
-    // 第三个参数为true的时候不会自动更新
-    tree.add = function (pid, newnodes, notUpdate) {
-
-        var treeData = toInnerTree(newnodes), id;
-        treeData[1][treeData[0]].pid = pid;
-        alltreedata[pid].children.push(treeData[0]);
-        for (id in treeData[1])
-            alltreedata[id] = treeData[1][id];
-        if (!notUpdate) update();
-        return tree;
-
-    };
-    tree.delete = function (id, notUpdate) {
-
-        var index = alltreedata[alltreedata[id].pid].children.indexOf(id);
-        if (index > -1)
-            alltreedata[alltreedata[id].pid].children.splice(index, 1);
-
-        // 删除多余结点
-        (function deleteNode(pid) {
-            var flag;
-            for (flag = 0; flag < alltreedata[pid].children.length; flag++) {
-                deleteNode(alltreedata[alltreedata[pid].children[flag]].id);
-            }
-            delete alltreedata[pid];
-        })(id);
-
-        if (!notUpdate) update();
-        return tree;
-
-    };
-
-    // 控制结点显示还是隐藏
-    // flag可选，"show"：显示，"hidden"：隐藏，不传递就是切换
-    tree.toggle = function (id, notUpdate, flag) {
-
-        var index = alltreedata[alltreedata[id].pid].children.indexOf(id);
-        if (index > -1 && flag != 'show') {
-            alltreedata[alltreedata[id].pid].children.splice(index, 1);
-            alltreedata[id]._index = index;
-        }
-        else if (flag != 'hidden')
-            alltreedata[alltreedata[id].pid].children.splice(alltreedata[id]._index, 0, id);
-        if (!notUpdate) update();
-        return tree;
-
-    };
-
-    tree.update = function () {
-
-        update();
-        return tree;
-    };
-
     return tree;
 
 };
 
-clay.pieLayout = function () {
-    var scope = {
-        // 圆心
-        c: [0, 0],
-        // 半径
-        r: 1,
-        // 提示信息连线长度
-        l: [20, 20],
-        // 获取值方法
-        v: function (value, key, index) {
-            return value;
-        },
-        // 起始角度
-        b: 0,
-        // 旋转方向
-        d: false,
-        // arc尺寸
-        g: Math.PI * 2
-    }, calcLinePosition = function (deg, r) {
-
-        var pos = [];
-        // 求出第一个点
-        pos[0] = clay.rotate(scope.c[0], scope.c[1], deg, scope.c[0] + r, scope.c[1]);
-
-        // 求出第二个点
-        pos[1] = clay.rotate(scope.c[0], scope.c[1], deg, scope.c[0] + r + scope.l[0], scope.c[1]);
-
-        // 求出第三个点
-        pos[2] = [
-            pos[1][0] > scope.c[0] ? pos[1][0] - (-scope.l[1]) : pos[1][0] - scope.l[1],
-            pos[1][1]
-        ];
-
-        pos[3] = pos[1][0] > scope.c[0] ? "left" : "right";
-
-        return pos;
-    };
-
-    /**
-     * 计算饼图数据
-     * @param {Array} initPie 一个可迭代的原始数据
-     */
-    var pie = function (initPie) {
-        var resultData = [], key, allVal = 0, i = 0;
-        for (key in initPie) {
-            resultData.push({
-                "org": initPie[key],
-                "val": scope.v(initPie[key], key, i)
-            });
-            allVal += resultData[i].val;
-            i += 1;
-        }
-        var preBegin = scope.b, preDeg = 0;
-        var cDeg;
-        for (i = 0; i < resultData.length - 1; i++) {
-
-            // 求解角度（主要用于画弧）
-            preBegin = resultData[i].begin = preBegin + preDeg;
-            resultData[i].p = resultData[i].val / allVal;
-            preDeg = resultData[i].deg = scope.g * resultData[i].p * (scope.d ? -1 : 1);
-
-            // 求解说明文字连线（主要用于绘制折线）
-            resultData[i].line = calcLinePosition(
-                resultData[i].begin + resultData[i].deg * 0.5,
-                typeof scope.r == 'function' ? scope.r(initPie[key], key, i) : scope.r);
-
-            // 启动绘画方法
-            scope.p(resultData[i], i);
-        }
-
-        // 最后一个为了可以完全闭合（因为计算有精度丢失导致的），独立计算
-        resultData[i].begin = preBegin + preDeg;
-        resultData[i].deg = scope.g * (scope.d ? -1 : 1) + scope.b - resultData[i].begin;
-        resultData[i].p = resultData[i].val / allVal;
-
-        resultData[i].line = calcLinePosition(
-            resultData[i].begin + resultData[i].deg * 0.5,
-            typeof scope.r == 'function' ? scope.r(initPie[key], key, i) : scope.r);
-
-        scope.p(resultData[i], i);
-        return pie;
-
-    };
-
-    // 设置如何获取值
-    // 函数有三个参数：原始值、值的key、序号
-    pie.setValue = function (valback) {
-        scope.v = valback;
-        return pie;
-    };
-
-    // 设置如何绘图
-    pie.drawer = function (drawerback) {
-        scope.p = drawerback;
-        return pie;
-    };
-
-    // 设置旋转方向
-    // true 逆时针
-    // false 顺时针
-    pie.setD = function (notClockwise) {
-        scope.d = notClockwise;
-        return pie;
-    };
-
-    // 设置起始角度
-    pie.setBegin = function (deg) {
-        scope.b = deg;
-        return pie;
-    };
-
-    // 设置半径
-    // 一个数字或返回半径的函数
-    // 函数有三个参数：原始值、值的key、序号
-    pie.setRadius = function (r) {
-        scope.r = r;
-        return pie;
-    };
-
-    // 设置提示信息连接线长度
-    pie.setDis = function (l1, l2) {
-        scope.l = [l1, typeof l2 == 'number' ? l2 : l1];
-        return pie;
-    };
-
-    // 设置弧中心
-    pie.setCenter = function (x, y) {
-        scope.c = [x, y];
-        return pie;
-    };
-
-    // 设置弧度跨度
-    pie.setDeg = function (deg) {
-        scope.g = deg;
-        return pie;
-    };
-
-    return pie;
-};
-
-// 可注入内部服务
-var _service = {
-    "$browser": {
-        "type": _browser,
-        "IE": _IE
-    }
-};
-
-// 常用方法
-var _this = {
-    "toNode": _toNode
-};
-
-/**
- * 确定应用目标以后
- * 启动编译并应用
- */
-clay.prototype.use = function (name, config) {
-
-    // 销毁之前的
-    if (this[0]._component) _component[this[0]._component].beforeDestory.apply(_this, [this]);
-
-    // 使用组件前，在结点中记录一下
-    this[0]._component = name;
-
-    // 添加监听方法
-    config.$watch = function (key, doback) {
-        var val = config[key];
-        Object.defineProperty(config, key, {
-            get: function () {
-                return val;
-            },
-            set: function (newVal) {
-                doback(newVal, val);
-                val = newVal;
-            }
-        });
-    };
-
-    // 组件创建前
-    if (typeof _component[name].beforeCreate == 'function') _component[name].beforeCreate.apply(_this, [this]);
-
-    // 启动组件
-    _component[name].link.apply(_this, [this, config]);
-    return this;
-};
-
-// 主动销毁
-clay.prototype.destory = function () {
-    if (this[0]._component) _component[this[0]._component].beforeDestory.apply(_this, [this]);
-    return this;
-};
-
-var _component = {
-    // 挂载组件
-};
-
-/**
- * 记录挂载的组件
- * 包括预处理
- */
-clay.component = function (name, content) {
-    var param = [], i;
-    if (content.constructor != Array) content = [content];
-    for (i = 0; i < content.length - 1; i++) {
-        param[i] = _service[content[i]] || undefined;
-    }
-    _component[name] = content[content.length - 1].apply(this, param);
-    return clay;
-};
-
 clay.config = function ($provider, content) {
-    var param = [], i;
-    if (content.constructor != Array) content = [content];
-    for (i = 0; i < content.length - 1; i++) {
-        param[i] = _service[content[i]] || undefined;
-    }
-    var config = content[content.length - 1].apply(this, param);
-    _provider[$provider](config);
+    _provider[$provider](content);
     return clay;
 };
 
-    clay.version = '1.5.2next';
+    clay.version = '1.9.0next';
     clay.author = '心叶';
     clay.email = 'yelloxing@gmail.com';
 
