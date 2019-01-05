@@ -4,28 +4,26 @@
 * 
 * author 心叶
 *
-* version 1.7.0next
+* version 1.9.0next
 * 
 * build Sun Jul 29 2018
 *
 * Copyright yelloxing
 * Released under the MIT license
 * 
-* Date:Thu Jan 03 2019 20:46:53 GMT+0800 (GMT+08:00)
+* Date:Sat Jan 05 2019 01:48:44 GMT+0800 (GMT+08:00)
 */
 (function (global, factory) {
 
     'use strict';
 
     if (typeof module === "object" && typeof module.exports === "object") {
-        module.exports = function (target) {
-            return factory(target || window);
-        };
+        module.exports = factory();
     } else {
-        global.clay = global.$$ = factory(global);
+        global.clay = global.$$ = factory();
     }
 
-})(typeof window !== "undefined" ? window : this, function (global, undefined) {
+})(typeof window !== "undefined" ? window : this, function (undefined) {
 
     'use strict';
 
@@ -214,7 +212,7 @@ function _toNode(str) {
     var frame = document.createElementNS(_namespace.svg, 'svg');
     // 把传递元素类型和标记进行统一处理
     if (new RegExp("^" + _regexp.identifier + "$").test(str)) str = "<" + str + "></" + str + ">";
-    frame.innerHTML = str;
+    _innerSVG(frame,str);
     var childNodes = frame.childNodes, flag, child;
     for (flag = 0; flag < childNodes.length; flag++) {
         if (childNodes[flag].nodeType === 1 || childNodes[flag].nodeType === 9 || childNodes[flag].nodeType === 11) {
@@ -491,45 +489,9 @@ clay.prototype.position = function (event) {
 
 };
 
-// 获取函数名称
-// 部分旧浏览器不支持
-if ('name' in Function.prototype === false) {
-    // https://www.ecma-international.org/ecma-262/6.0/#sec-setfunctionname
-    Object.defineProperty(Function.prototype, 'name', {
-        get: function () {
-            return this.toString().match(/^\s*function\s*([^\(\s]*)/)[1];
-        }
-    });
-}
-
-// 表示二个正的浮点数之间的最新差值
-// 你可以由此判断二个浮点数是否相对
-// （因为js浮点运算都不是准确的，不可以简单的等号判断）
-// 老火狐和IE不支持
-if (Number.EPSILON === undefined) {
-    // https://www.ecma-international.org/ecma-262/6.0/#sec-number.epsilon
-    Number.EPSILON = Math.pow(2, - 52);
-}
-
-// 判断是不是整数
-// IE浏览器不支持
-if (Number.isInteger === undefined) {
-    Number.isInteger = function (value) {
-        // https://www.ecma-international.org/ecma-262/6.0/#sec-isfinite-number
-        return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
-    };
-}
-
-var _innerHTML = {
-    get: function () {
-        var frame = document.createElement("div"), i;
-        for (i = 0; i < this.childNodes.length; i++) {
-            // 深度克隆，克隆节点以及节点下面的子内容
-            frame.appendChild(this.childNodes[i].cloneNode(true));
-        }
-        return frame.innerHTML;
-    },
-    set: function (svgstring) {
+// 针对部分浏览器svg不支持innerHTML方法
+var _innerSVG = function (target, svgstring) {
+    if ('innerHTML' in SVGElement.prototype === false || 'innerHTML' in SVGSVGElement.prototype === false) {
         var frame = document.createElement("div"), i;
         frame.innerHTML = svgstring;
         var toSvgNode = function (htmlNode) {
@@ -554,47 +516,11 @@ var _innerHTML = {
                 node = node.nextSibling;
             }
         })(frame.firstChild, rslNode);
-        this.appendChild(rslNode);
+        target.appendChild(rslNode);
+    } else {
+        target.innerHTML = svgstring;
     }
 };
-
-// 针对部分浏览器svg上没有innerHTML进行加强
-if ('innerHTML' in SVGElement.prototype === false) {
-    Object.defineProperty(SVGElement.prototype, 'innerHTML', _innerHTML);
-}
-if ('innerHTML' in SVGSVGElement.prototype === false) {
-    Object.defineProperty(SVGSVGElement.prototype, 'innerHTML', _innerHTML);
-}
-
-// 兼容老IE浏览器
-// 请不要使用event.srcElement获取
-// https://dom.spec.whatwg.org/#dom-event-srcelement
-if ('target' in Event.prototype === false) {
-    Object.defineProperty(Event.prototype, 'target', {
-        get: function () {
-            return this.srcElement;
-        }
-    });
-}
-
-// 取消冒泡事件
-// 防止对事件流中当前节点的后续节点中的所有事件侦听器进行处理
-// 此方法不会影响当前节点中的任何事件侦听器
-// 如果需要取消包括本结点的方法，应该使用stopImmediatePropagation()
-// https://dom.spec.whatwg.org/#dom-event-stopimmediatepropagation
-if ('stopPropagation' in Event.prototype === false) {
-    Event.prototype.stopPropagation = function () {
-        this.cancelBubble = true;
-    };
-}
-
-// 阻止默认事件
-// https://dom.spec.whatwg.org/#dom-event-preventdefault
-if ('preventDefault' in Event.prototype === false) {
-    Event.prototype.preventDefault = function () {
-        this.returnValue = false;
-    };
-}
 
 var _clock = {
     //当前正在运动的动画的tick函数堆栈
@@ -1933,17 +1859,6 @@ clay.camera = function () {
 
 };
 
-// 灯光
-
-// diffuse reflection
-// <漫反射光颜色>=<入射光颜色>*<表面基底色>*cosB
-// 入射光线和法线的夹角称为入射角，用B表示
-
-// ambient reflection
-// <环境反射光颜色>=<入射光颜色>*<表面基底色>
-
-// <表面的反射光颜色>=<漫反射光颜色>+<环境反射光颜色>
-
 clay.treeLayout = function () {
 
     var scope = {
@@ -2009,9 +1924,12 @@ clay.treeLayout = function () {
 
             })(alltreedata[rootid], 0);
 
-            // 画图
             // 传递的参数分别表示：记录了位置信息的树结点集合、根结点ID和树的宽
-            scope.e.drawer(alltreedata, rootid, size);
+            return {
+                "node": alltreedata,
+                "root": rootid,
+                "size": size
+            };
 
         };
 
@@ -2023,8 +1941,7 @@ clay.treeLayout = function () {
      *  "data":原始数据,
      *  "pid":父亲ID,
      *  "id":唯一标识ID,
-     *  "children":[cid1、cid2、...],
-     *  "show":boolean，表示该结点在计算位置的时候是否可见
+     *  "children":[cid1、cid2、...]
      * }
      */
     var toInnerTree = function (initTree) {
@@ -2037,8 +1954,7 @@ clay.treeLayout = function () {
             "data": temp,
             "pid": null,
             "id": id,
-            "children": [],
-            "show": true
+            "children": []
         };
         // 根据传递的原始数据，生成内部统一结构
         (function createTree(pdata, pid) {
@@ -2050,8 +1966,7 @@ clay.treeLayout = function () {
                     "data": children[flag],
                     "pid": pid,
                     "id": id,
-                    "children": [],
-                    "show": true
+                    "children": []
                 };
                 createTree(children[flag], id);
             }
@@ -2067,8 +1982,7 @@ clay.treeLayout = function () {
         var treeData = toInnerTree(initTree);
         alltreedata = treeData[1];
         rootid = treeData[0];
-        update();
-        return tree;
+        return update();
 
     };
 
@@ -2090,290 +2004,16 @@ clay.treeLayout = function () {
         return tree;
     };
 
-    // 结点更新处理方法 drawer(alltreedata, rootid, size)
-    tree.drawer = function (drawerback) {
-        scope.e.drawer = drawerback;
-        return tree;
-    };
-
-    // 第三个参数为true的时候不会自动更新
-    tree.add = function (pid, newnodes, notUpdate) {
-
-        var treeData = toInnerTree(newnodes), id;
-        treeData[1][treeData[0]].pid = pid;
-        alltreedata[pid].children.push(treeData[0]);
-        for (id in treeData[1])
-            alltreedata[id] = treeData[1][id];
-        if (!notUpdate) update();
-        return tree;
-
-    };
-    tree.delete = function (id, notUpdate) {
-
-        var index = alltreedata[alltreedata[id].pid].children.indexOf(id);
-        if (index > -1)
-            alltreedata[alltreedata[id].pid].children.splice(index, 1);
-
-        // 删除多余结点
-        (function deleteNode(pid) {
-            var flag;
-            for (flag = 0; flag < alltreedata[pid].children.length; flag++) {
-                deleteNode(alltreedata[alltreedata[pid].children[flag]].id);
-            }
-            delete alltreedata[pid];
-        })(id);
-
-        if (!notUpdate) update();
-        return tree;
-
-    };
-
-    // 控制结点显示还是隐藏
-    // flag可选，"show"：显示，"hidden"：隐藏，不传递就是切换
-    tree.toggle = function (id, notUpdate, flag) {
-
-        var index = alltreedata[alltreedata[id].pid].children.indexOf(id);
-        if (index > -1 && flag != 'show') {
-            alltreedata[alltreedata[id].pid].children.splice(index, 1);
-            alltreedata[id]._index = index;
-        }
-        else if (flag != 'hidden')
-            alltreedata[alltreedata[id].pid].children.splice(alltreedata[id]._index, 0, id);
-        if (!notUpdate) update();
-        return tree;
-
-    };
-
-    tree.update = function () {
-
-        update();
-        return tree;
-    };
-
     return tree;
 
 };
 
-clay.pieLayout = function () {
-    var scope = {
-        // 圆心
-        c: [0, 0],
-        // 半径
-        r: 1,
-        // 提示信息连线长度
-        l: [20, 20],
-        // 获取值方法
-        v: function (value, key, index) {
-            return value;
-        },
-        // 起始角度
-        b: 0,
-        // 旋转方向
-        d: false,
-        // arc尺寸
-        g: Math.PI * 2
-    }, calcLinePosition = function (deg, r) {
-
-        var pos = [];
-        // 求出第一个点
-        pos[0] = clay.rotate(scope.c[0], scope.c[1], deg, scope.c[0] + r, scope.c[1]);
-
-        // 求出第二个点
-        pos[1] = clay.rotate(scope.c[0], scope.c[1], deg, scope.c[0] + r + scope.l[0], scope.c[1]);
-
-        // 求出第三个点
-        pos[2] = [
-            pos[1][0] > scope.c[0] ? pos[1][0] - (-scope.l[1]) : pos[1][0] - scope.l[1],
-            pos[1][1]
-        ];
-
-        pos[3] = pos[1][0] > scope.c[0] ? "left" : "right";
-
-        return pos;
-    };
-
-    /**
-     * 计算饼图数据
-     * @param {Array} initPie 一个可迭代的原始数据
-     */
-    var pie = function (initPie) {
-        var resultData = [], key, allVal = 0, i = 0;
-        for (key in initPie) {
-            resultData.push({
-                "org": initPie[key],
-                "val": scope.v(initPie[key], key, i)
-            });
-            allVal += resultData[i].val;
-            i += 1;
-        }
-        var preBegin = scope.b, preDeg = 0;
-        var cDeg;
-        for (i = 0; i < resultData.length - 1; i++) {
-
-            // 求解角度（主要用于画弧）
-            preBegin = resultData[i].begin = preBegin + preDeg;
-            resultData[i].p = resultData[i].val / allVal;
-            preDeg = resultData[i].deg = scope.g * resultData[i].p * (scope.d ? -1 : 1);
-
-            // 求解说明文字连线（主要用于绘制折线）
-            resultData[i].line = calcLinePosition(
-                resultData[i].begin + resultData[i].deg * 0.5,
-                typeof scope.r == 'function' ? scope.r(initPie[key], key, i) : scope.r);
-
-            // 启动绘画方法
-            scope.p(resultData[i], i);
-        }
-
-        // 最后一个为了可以完全闭合（因为计算有精度丢失导致的），独立计算
-        resultData[i].begin = preBegin + preDeg;
-        resultData[i].deg = scope.g * (scope.d ? -1 : 1) + scope.b - resultData[i].begin;
-        resultData[i].p = resultData[i].val / allVal;
-
-        resultData[i].line = calcLinePosition(
-            resultData[i].begin + resultData[i].deg * 0.5,
-            typeof scope.r == 'function' ? scope.r(initPie[key], key, i) : scope.r);
-
-        scope.p(resultData[i], i);
-        return pie;
-
-    };
-
-    // 设置如何获取值
-    // 函数有三个参数：原始值、值的key、序号
-    pie.setValue = function (valback) {
-        scope.v = valback;
-        return pie;
-    };
-
-    // 设置如何绘图
-    pie.drawer = function (drawerback) {
-        scope.p = drawerback;
-        return pie;
-    };
-
-    // 设置旋转方向
-    // true 逆时针
-    // false 顺时针
-    pie.setD = function (notClockwise) {
-        scope.d = notClockwise;
-        return pie;
-    };
-
-    // 设置起始角度
-    pie.setBegin = function (deg) {
-        scope.b = deg;
-        return pie;
-    };
-
-    // 设置半径
-    // 一个数字或返回半径的函数
-    // 函数有三个参数：原始值、值的key、序号
-    pie.setRadius = function (r) {
-        scope.r = r;
-        return pie;
-    };
-
-    // 设置提示信息连接线长度
-    pie.setDis = function (l1, l2) {
-        scope.l = [l1, typeof l2 == 'number' ? l2 : l1];
-        return pie;
-    };
-
-    // 设置弧中心
-    pie.setCenter = function (x, y) {
-        scope.c = [x, y];
-        return pie;
-    };
-
-    // 设置弧度跨度
-    pie.setDeg = function (deg) {
-        scope.g = deg;
-        return pie;
-    };
-
-    return pie;
-};
-
-// 可注入内部服务
-var _service = {
-
-};
-
-// 常用方法
-var _this = {
-    "toNode": _toNode
-};
-
-/**
- * 确定应用目标以后
- * 启动编译并应用
- */
-clay.prototype.use = function (name, config) {
-
-    // 销毁之前的
-    if (this[0]._component) _component[this[0]._component].beforeDestory.apply(_this, [this]);
-
-    // 使用组件前，在结点中记录一下
-    this[0]._component = name;
-
-    // 添加监听方法
-    config.$watch = function (key, doback) {
-        var val = config[key];
-        Object.defineProperty(config, key, {
-            get: function () {
-                return val;
-            },
-            set: function (newVal) {
-                doback(newVal, val);
-                val = newVal;
-            }
-        });
-    };
-
-    // 组件创建前
-    if (typeof _component[name].beforeCreate == 'function') _component[name].beforeCreate.apply(_this, [this]);
-
-    // 启动组件
-    _component[name].link.apply(_this, [this, config]);
-    return this;
-};
-
-// 主动销毁
-clay.prototype.destory = function () {
-    if (this[0]._component) _component[this[0]._component].beforeDestory.apply(_this, [this]);
-    return this;
-};
-
-var _component = {
-    // 挂载组件
-};
-
-/**
- * 记录挂载的组件
- * 包括预处理
- */
-clay.component = function (name, content) {
-    var param = [], i;
-    if (content.constructor != Array) content = [content];
-    for (i = 0; i < content.length - 1; i++) {
-        param[i] = _service[content[i]] || undefined;
-    }
-    _component[name] = content[content.length - 1].apply(this, param);
-    return clay;
-};
-
 clay.config = function ($provider, content) {
-    var param = [], i;
-    if (content.constructor != Array) content = [content];
-    for (i = 0; i < content.length - 1; i++) {
-        param[i] = _service[content[i]] || undefined;
-    }
-    var config = content[content.length - 1].apply(this, param);
-    _provider[$provider](config);
+    _provider[$provider](content);
     return clay;
 };
 
-    clay.version = '1.7.0next';
+    clay.version = '1.9.0next';
     clay.author = '心叶';
     clay.email = 'yelloxing@gmail.com';
 

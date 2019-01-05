@@ -13,6 +13,8 @@
 ### 邮箱:yelloxing@gmail.com
 ****
 
+>>> 温馨提示：本项目中，v1.x.x标记的版本处于实验阶段，从2.0.0开始的版本，请放心使用，另外，每个版本（2.0.0及以上版本）基本都向前兼容，如果有特殊情况，会在此处登记！
+
 关注的问题
 --------------------------------------
 首先，本项目是为了Web端绘图而建立的，如果用更通俗的话说，就是为了方便使用HTML + CSS + ES绘制各种2D和3D图形，并且绘制的图形是可交互的。
@@ -24,14 +26,6 @@
 开源初衷
 --------------------------------------
 始终秉承着开源的初衷，任何有益的建议或设计都是被鼓励作为新的代码贡献进来的。加入我们前，请先阅读[相关基本说明](https://github.com/yelloxing/clay-core/blob/master/.github/CONTRIBUTING.md)和[接口文档API](https://yelloxing.github.io/clay-core/doc)了解基本情况。如果仍有疑惑，可以发送作者邮箱询问细节。
-
-如何参与？
---------------------------------------
-目前维护工作主要有如下方面，你可以根据自己的选择进行：
-
-- 参与项目代码开发：关于项目开发部分，全部由[Projects - 核心代码开发](https://github.com/yelloxing/clay-core/projects/2)分配任务，你可以在其中领取任务或在issue中提出开发意见。
-
-- 参与文档编辑：关于项目本身和相关文档，全部由[Projects - 文档整理和校对](https://github.com/yelloxing/clay-core/projects/3)分配任务。
 
 如何使用？
 --------------------------------------
@@ -50,16 +44,13 @@ npm install --save clay-core
 安装好了，可以这样调用：
 
 ```js
-import render from 'clay-core';
-
-// 启动clay
-let clay=render(window);
+import clay from 'clay-core';
 
 // 基本配置(可以不配置，使用默认值)
 clay.config(...);
 ...
 
-// 导出，供别的模块使用
+// 导出，供别的模块使用(如果没有配置，别的模块重新import也一样)
 export default clay;
 ```
 

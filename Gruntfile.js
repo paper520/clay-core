@@ -14,9 +14,7 @@ var source = [
     /**
      * 兼容性
      */
-    './src/polyfill/normal.js',
     './src/polyfill/innerHTML.js',
-    './src/polyfill/event.js',
 
     /**
      * 工具类
@@ -63,20 +61,16 @@ var source = [
     './src/three/lookAt.js',
     './src/three/projection.js',
     './src/three/camera.js',
-    './src/three/light.js',
 
     /**
      * 布局
      */
     './src/layout/tree.js',
-    './src/layout/pie.js',
 
     /**
-     * 扩展
+     * 加强
      */
-    './src/extend/compiler.js',
-    './src/extend/component.js',
-    './src/extend/config.js'
+    './src/enhance/config.js'
 
 ];
 
