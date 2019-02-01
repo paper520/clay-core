@@ -1,4 +1,4 @@
-[clay.js](https://yelloxing.github.io/clay-core/doc/) - Provide a more friendly web-side drawing interface
+[clay.js / core](https://yelloxing.github.io/clay-core/doc/) - Provide a more friendly web-side drawing interface
 ==================================================
 
 [![travis](https://www.travis-ci.org/yelloxing/clay-core.svg?branch=master)](https://www.travis-ci.org/yelloxing/clay-core)
@@ -13,15 +13,25 @@
 ### 邮箱:yelloxing@gmail.com
 ****
 
->>> 温馨提示：本项目中，v1.x.x标记的版本处于实验阶段，从2.0.0开始的版本，请放心使用，另外，每个版本（2.0.0及以上版本）基本都向前兼容，如果有特殊情况，会在此处登记！
-
 关注的问题
 --------------------------------------
 首先，本项目是为了Web端绘图而建立的，如果用更通俗的话说，就是为了方便使用HTML + CSS + ES绘制各种2D和3D图形，并且绘制的图形是可交互的。
 
 和别的库不同的是，clay.js关注的重点是绘图过程中繁琐的操作和复杂的计算部分，通过提供更友好的操作接口和丰富而基础的计算接口来加速绘图。除此之外，不会也不喜欢强迫使用者改变自己的代码习惯，或者说在尽可能的情况下，保证灵活性。
 
-[![](https://github.com/yelloxing/clay-core/blob/master/doc/images/clay-readme.jpg)](https://yelloxing.github.io/clay/doc/)
+[![](https://github.com/yelloxing/clay-core/blob/master/doc/images/clay-readme.jpg)](https://yelloxing.github.io/clay-core/doc/)
+
+项目关系
+--------------------------------------
+clay.js是一个在浏览器端绘图的一个项目集的称呼，其中有很多项目，下面分别说明一下：
+
+* [clay.js / core](https://yelloxing.github.io/clay-core/doc/) - 也就是本项目，主要是浏览器端绘图的基本接口，只要是使用本系列绘图，大部分情况下，都应该引入本项目。
+
+* [clay.js / 2d](https://github.com/yelloxing/clay-2d) - 主要提供绘制二维图形的快捷接口，比如扇形等，引入本项目以后，基本的二维图形的绘制将不再麻烦。
+
+* [clay.js / chart](https://github.com/yelloxing/clay-chart) - 主要是图表绘制问题，比如绘制饼状图、树图等，你可以认为，这是一个数据可视化相关的计算库。
+
+* [clay.js / 3d](https://github.com/yelloxing/clay-3d) - 绘制三维图形相关的基础库，目前处于开发阶段。
 
 开源初衷
 --------------------------------------
@@ -52,6 +62,27 @@ clay.config(...);
 
 // 导出，供别的模块使用(如果没有配置，别的模块重新import也一样)
 export default clay;
+```
+
+如果你是使用npm方式管理的，除了导入全局clay外，你还可以导入你需要的接口，下面列出全部可导入接口：
+
+```js
+import {
+    // 全局变量
+    clay, $$,
+    // 布局
+    treeLayout,
+    // 坐标变换
+    rotate, move, scale,
+    // 曲线插值
+    hermite, cardinal, catmullRom,
+    // Matrix4矩阵
+    Matrix4,
+    // 地球坐标映射
+    map,
+    // 轮询
+    animation, loop
+} from 'clay-core';
 ```
 
 如何在本地搭建开发环境？
