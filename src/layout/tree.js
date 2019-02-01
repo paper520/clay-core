@@ -22,9 +22,10 @@ clay.treeLayout = function () {
          */
         update = function () {
 
-            var beforeDis = [], size = 0;
+            var beforeDis = [], size = 0, maxDeep = 0;
             (function positionCalc(pNode, deep) {
 
+                if (deep > maxDeep) maxDeep = deep;
                 var flag;
                 for (flag = 0; flag < pNode.children.length; flag++)
                     // 因为全部的子结点的位置确定了，父结点的y位置就是子结点的中间位置
@@ -63,6 +64,21 @@ clay.treeLayout = function () {
                     alltreedata[pNode.id].top = (alltreedata[pNode.children[0]].top + alltreedata[pNode.children[flag - 1]].top) * 0.5;
                 }
 
+                // 因为计算孩子的时候
+                // 无法掌握父辈兄弟的情况
+                // 可能会出现父亲和兄弟重叠问题
+                if (alltreedata[pNode.id].top <= beforeDis[deep]) {
+                    var needUp = beforeDis[deep] + 1 - alltreedata[pNode.id].top;
+                    (function doUp(_pid, _deep) {
+                        alltreedata[_pid].top += needUp;
+                        if (beforeDis[_deep] < alltreedata[_pid].top) beforeDis[_deep] = alltreedata[_pid].top;
+                        var _flag;
+                        for (_flag = 0; _flag < alltreedata[_pid].children.length; _flag++) {
+                            doUp(alltreedata[_pid].children[_flag], _deep + 1);
+                        }
+                    })(pNode.id, deep);
+                }
+
                 // 计算好一个结点后，需要更新此刻该层的上边缘
                 beforeDis[deep] = alltreedata[pNode.id].top;
 
@@ -75,7 +91,8 @@ clay.treeLayout = function () {
             return {
                 "node": alltreedata,
                 "root": rootid,
-                "size": size
+                "size": size,
+                "deep": maxDeep + 1
             };
 
         };
